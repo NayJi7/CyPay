@@ -5,6 +5,6 @@
 
 
 3. Framework (faire communiquer nos acteurs de manière synchrone ou asynchrone qu'ils soient dans le même micro-service ou non, gestion implicite des acteurs superviseur). jar a importer (interface Actor, ..)
-4. Déployer et tester (automatiser les tests, ...).
+4. Déployer et tester (automatiser les tests, ...), les communications entre micro-services doivent se faire en RestFul
 
 #WrittenByRayanLeBoss, #CommitFarming
