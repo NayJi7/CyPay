@@ -21,4 +21,6 @@ public class DatabaseService {
     public Optional<User> findByEmail(String email) {
         return repo.findByEmail(email);
     }
+
+    public Optional<User> findById(Long id) { return repo.findById(id); }
 }
