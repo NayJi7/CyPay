@@ -1,18 +1,22 @@
 server:
-  port: 8080
+  port: 8082
+
+# Configuration des services externes
+user:
+  service:
+    url: http://localhost:8080
 
 spring:
   datasource:
-    url: jdbc:h2:mem:walletdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driverClassName: org.h2.Driver
-    username: sa
-    password:
+    url: jdbc:postgresql://db.yldotyunksweuovyknzg.supabase.co:5432/postgres
+    username: postgres
+    password: Cypay.Cytech
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
-
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true

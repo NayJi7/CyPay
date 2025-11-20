@@ -107,12 +107,11 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- Framework Acteurs CyPay -->
 		<dependency>
 			<groupId>com.cypay</groupId>
 			<artifactId>acteur-framework</artifactId>
 			<version>1.0.0</version>
-			<scope>system</scope>
-			<systemPath>H:/Documents/CyPay/framework/acteur-framework.jar</systemPath>
 		</dependency>
 
 	</dependencies>
