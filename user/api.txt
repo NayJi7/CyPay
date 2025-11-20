@@ -1,0 +1,59 @@
+🔐 API REST User Management - Documentation
+
+JWT
+Les tokens JWT expirent après 1 heure (3600 secondes).
+
+
+🔒 Sécurité
+Protection des endpoints
+
+Endpoints publics : /users/register, /users/login
+Endpoints protégés : Tous les autres endpoints nécessitent un JWT valide dans le header Authorization: Bearer TOKEN
+
+Hash des mots de passe
+Les mots de passe sont hashés avec BCrypt avant d'être stockés en base de données. Ils ne sont jamais stockés en clair.
+JWT Token
+
+Signé avec une clé secrète
+Expiration : 1 heure (3600 secondes)
+Contient l'email de l'utilisateur dans le champ sub (subject)
+
+
+🧪 Scénario de test complet
+# 1. Créer un utilisateur John
+curl -X POST http://localhost:8080/users/register -H "Content-Type: application/json" -d "{\"pseudo\":\"John Doe\",\"email\":\"john@example.com\",\"password\":\"password123\"}"
+
+# 2. Créer un utilisateur Jane
+curl -X POST http://localhost:8080/users/register -H "Content-Type: application/json" -d "{\"pseudo\":\"Jane Smith\",\"email\":\"jane@example.com\",\"password\":\"password456\"}"
+
+# 3. Se connecter avec John (⚠️ COPIEZ LE TOKEN !)
+curl -X POST http://localhost:8080/users/login -H "Content-Type: application/json" -d "{\"email\":\"john@example.com\",\"password\":\"password123\"}"
+
+# 4. Récupérer son profil
+curl -X GET http://localhost:8080/users/me -H "Authorization: Bearer VOTRE_TOKEN_ICI"
+
+# 5. Modifier son profil
+curl -X PUT http://localhost:8080/users/me -H "Authorization: Bearer VOTRE_TOKEN_ICI" -H "Content-Type: application/json" -d "{\"pseudo\":\"John Updated\",\"email\":\"john@example.com\",\"password\":\"newpass123\"}"
+
+# 6. Récupérer un utilisateur par ID
+curl -X GET http://localhost:8080/users/1 -H "Authorization: Bearer VOTRE_TOKEN_ICI"
+
+# 7. Essayer de modifier le compte de Jane avec PUT /users/2 (✋ SERA BLOQUÉ)
+curl -X PUT http://localhost:8080/users/2 -H "Authorization: Bearer VOTRE_TOKEN_ICI" -H "Content-Type: application/json" -d "{\"pseudo\":\"Hacker\",\"email\":\"hacker@example.com\",\"password\":\"hack123\"}"
+
+# Résultat attendu: {"error":"You can only update your own account"}
+
+# 8. Essayer de supprimer le compte de Jane avec DELETE /users/2 (✋ SERA BLOQUÉ)
+curl -X DELETE http://localhost:8080/users/2 -H "Authorization: Bearer VOTRE_TOKEN_ICI"
+
+# Résultat attendu: {"error":"You can only delete your own account"}
+
+# 9. Supprimer son propre compte
+curl -X DELETE http://localhost:8080/users/me -H "Authorization: Bearer VOTRE_TOKEN_ICI"
+
+# Résultat attendu: {"message":"User deleted successfully"}
+
+
+
+
+comment compiler le framwork : "C:\Program Files\Java\jdk-21\bin\jar.exe" cf acteur-framework.jar -C out .
