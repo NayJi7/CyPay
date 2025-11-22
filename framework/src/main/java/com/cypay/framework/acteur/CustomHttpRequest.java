@@ -9,7 +9,7 @@ public class CustomHttpRequest {
     private String body;
     private Map<String, String> headers;
 
-    private CustomHttpRequest() {
+    public CustomHttpRequest() {
         this.headers = new HashMap<>();
     }
 

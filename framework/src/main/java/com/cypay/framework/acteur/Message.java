@@ -3,6 +3,8 @@ package com.cypay.framework.acteur;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+
+
 public class Message<T> {
     private final String id;
     private final String emetteur;
@@ -20,4 +22,6 @@ public class Message<T> {
     public String getEmetteur() { return emetteur; }
     public T getContenu() { return contenu; }
     public LocalDateTime getTimestamp() { return timestamp; }
+
+
 }

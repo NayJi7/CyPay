@@ -1,5 +1,8 @@
 package com.cypay.framework.acteur;
 
+import com.cypay.framework.http.HttpResponse;
+import com.cypay.framework.http.HttpMethode;
+import com.cypay.framework.http.HttpReceiver;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -9,9 +12,10 @@ public abstract class Acteur<T> implements Runnable {
     private final String nom;
     private final BlockingQueue<Message<T>> mailbox;
     private volatile boolean running;
-    private final ActeurLogger logger;
+    protected ActeurLogger logger;
     private final ActeurHttpClient httpClient;
     private Thread thread;
+    private HttpReceiver httpReceiver;
 
     public Acteur(String nom) {
         this.nom = nom;
@@ -27,9 +31,6 @@ public abstract class Acteur<T> implements Runnable {
         logger.info("Acteur démarré");
     }
 
-    /**
-     * Envoie un message à cet acteur
-     */
     public void envoyer(Message<T> message) {
         try {
             mailbox.put(message);
@@ -40,46 +41,44 @@ public abstract class Acteur<T> implements Runnable {
         }
     }
 
-    /**
-     * Envoie un message à un autre acteur
-     */
+    public void envoyerObjet(Object contenu) {
+        Message<?> message = new Message<>("SYSTEM", contenu);
+        try {
+            mailbox.put((Message<T>) message);
+            logger.messageRecu("SYSTEM", contenu.getClass().getSimpleName());
+        } catch (InterruptedException e) {
+            logger.erreur("Erreur lors de l'envoi du message", e);
+            Thread.currentThread().interrupt();
+        }
+    }
+
     protected void envoyerVers(Acteur<?> destinataire, Object contenu) {
         Message<?> message = new Message<>(this.nom, contenu);
         logger.messageEnvoye(destinataire.getNom(), contenu.getClass().getSimpleName());
         destinataire.envoyer((Message) message);
     }
 
-    /**
-     * Fait une requête HTTP GET
-     */
+
     protected HttpResponse get(String url) {
         return httpClient.get(url);
     }
 
-    /**
-     * Fait une requête HTTP POST
-     */
+
     protected HttpResponse post(String url, String jsonBody) {
         return httpClient.post(url, jsonBody);
     }
 
-    /**
-     * Fait une requête HTTP PUT
-     */
+
     protected HttpResponse put(String url, String jsonBody) {
         return httpClient.put(url, jsonBody);
     }
 
-    /**
-     * Fait une requête HTTP DELETE
-     */
+
     protected HttpResponse delete(String url) {
         return httpClient.delete(url);
     }
 
-    /**
-     * Fait une requête HTTP personnalisée
-     */
+
     protected HttpResponse request(CustomHttpRequest request) {
         return httpClient.execute(request);
     }
@@ -132,6 +131,31 @@ public abstract class Acteur<T> implements Runnable {
             thread.interrupt();
         }
     }
+
+    public void receive(int port) {
+        if (httpReceiver == null)
+            httpReceiver = new HttpReceiver();
+
+        httpReceiver.start(port, this);
+    }
+
+    public HttpResponse sendHttp(int port, String path, HttpMethode method, String body) {
+        String url = "http://localhost:" + port + path;
+
+        log("Envoi HTTP " + method + " vers " + url);
+
+        CustomHttpRequest request = CustomHttpRequest.builder()
+                .url(url)
+                .method(method.name())
+                .header("Content-Type", "application/json");
+
+        if (body != null)
+            request.body(body);
+
+        return httpClient.execute(request);
+    }
+
+
 
     public String getNom() {
         return nom;

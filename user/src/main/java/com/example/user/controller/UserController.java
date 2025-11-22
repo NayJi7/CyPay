@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 
 @RestController
 @RequestMapping("/users")
@@ -23,12 +24,20 @@ public class UserController {
     private final JwtUtil jwtUtil;
     private final ActeurLogger loggingActeur;
 
-    public UserController(UserService userService, JwtUtil jwtUtil) {
+    public UserController(UserService userService, JwtUtil jwtUtil,
+                          @Value("${logs.db.enabled:false}") boolean logsDbEnabled,
+                          @Value("${logs.db.url:}") String logsDbUrl,
+                          @Value("${logs.db.user:}") String logsDbUser,
+                          @Value("${logs.db.password:}") String logsDbPassword
+                          ) {
         this.userService = userService;
         this.jwtUtil = jwtUtil;
         this.loggingActeur = new ActeurLogger(
                 "UserController",
-                true
+                true,
+                logsDbUrl,
+                logsDbUser,
+                logsDbPassword
         );
     }
 
@@ -114,8 +123,6 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("User not found"));
         }
     }
-
-    // ==================== NOUVEAUX ENDPOINTS ====================
 
     /**
      * Récupère tous les utilisateurs (ID + Pseudo uniquement)

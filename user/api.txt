@@ -41,6 +41,9 @@ curl -X GET http://localhost:8080/users/1 -H "Authorization: Bearer VOTRE_TOKEN_
 # 7. Essayer de modifier le compte de Jane avec PUT /users/2 (✋ SERA BLOQUÉ)
 curl -X PUT http://localhost:8080/users/2 -H "Authorization: Bearer VOTRE_TOKEN_ICI" -H "Content-Type: application/json" -d "{\"pseudo\":\"Hacker\",\"email\":\"hacker@example.com\",\"password\":\"hack123\"}"
 
+# Recuperer tout les user :
+curl -X GET http://localhost:8080/users -H "Authorization: Bearer VOTRE_TOKEN_ICI"
+
 # Résultat attendu: {"error":"You can only update your own account"}
 
 # 8. Essayer de supprimer le compte de Jane avec DELETE /users/2 (✋ SERA BLOQUÉ)
@@ -56,4 +59,10 @@ curl -X DELETE http://localhost:8080/users/me -H "Authorization: Bearer VOTRE_TO
 
 
 
-comment compiler le framwork : "C:\Program Files\Java\jdk-21\bin\jar.exe" cf acteur-framework.jar -C out .
+comment compiler le framwork : 
+javac -cp "H:\Documents\CyPay\framework\libs\JWT\*;out;" ^
+  -d out ^
+  src\main\java\com\cypay\framework\security\*.java ^
+  src\main\java\com\cypay\framework\acteur\*.java
+
+"C:\Program Files\Java\jdk-21\bin\jar.exe" cf acteur-framework.jar -C out .

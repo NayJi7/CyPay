@@ -1,5 +1,7 @@
 package com.cypay.framework.acteur;
 
+import com.cypay.framework.http.HttpResponse;
+import com.cypay.framework.acteur.CustomHttpRequest;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
