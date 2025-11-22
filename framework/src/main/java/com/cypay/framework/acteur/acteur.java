@@ -6,7 +6,6 @@ import com.cypay.framework.http.HttpReceiver;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-
 public abstract class Acteur<T> implements Runnable {
 
     private final String nom;
@@ -17,12 +16,20 @@ public abstract class Acteur<T> implements Runnable {
     private Thread thread;
     private HttpReceiver httpReceiver;
 
+    // ✅ AJOUT : Référence au superviseur
+    protected Acteur<?> supervisor;
+
     public Acteur(String nom) {
         this.nom = nom;
         this.mailbox = new LinkedBlockingQueue<>();
         this.running = true;
         this.logger = new ActeurLogger(nom);
         this.httpClient = new ActeurHttpClient(logger);
+    }
+
+    // ✅ AJOUT : Configurer le superviseur
+    public void setSupervisor(Acteur<?> supervisor) {
+        this.supervisor = supervisor;
     }
 
     public void demarrer() {
@@ -58,26 +65,21 @@ public abstract class Acteur<T> implements Runnable {
         destinataire.envoyer((Message) message);
     }
 
-
     protected HttpResponse get(String url) {
         return httpClient.get(url);
     }
-
 
     protected HttpResponse post(String url, String jsonBody) {
         return httpClient.post(url, jsonBody);
     }
 
-
     protected HttpResponse put(String url, String jsonBody) {
         return httpClient.put(url, jsonBody);
     }
 
-
     protected HttpResponse delete(String url) {
         return httpClient.delete(url);
     }
-
 
     protected HttpResponse request(CustomHttpRequest request) {
         return httpClient.execute(request);
@@ -99,6 +101,7 @@ public abstract class Acteur<T> implements Runnable {
 
     /**
      * Boucle principale de l'acteur
+     * ✅ MODIFIÉ : Gestion des erreurs avec notification au superviseur
      */
     @Override
     public void run() {
@@ -106,15 +109,58 @@ public abstract class Acteur<T> implements Runnable {
             try {
                 Message<T> message = mailbox.take();
                 traiterMessage(message.getContenu());
+
             } catch (InterruptedException e) {
                 logger.erreur("Thread interrompu", e);
                 Thread.currentThread().interrupt();
                 break;
+
             } catch (Exception e) {
+                // ✅ AJOUT : Log l'erreur
                 logger.erreur("Erreur lors du traitement du message", e);
+
+                // ✅ AJOUT : Notifier le superviseur si présent
+                if (supervisor != null) {
+                    try {
+                        notifierSuperviseur(e);
+                    } catch (Exception notifyError) {
+                        logger.erreur("Impossible de notifier le superviseur", notifyError);
+                    }
+                }
+
+                // ✅ L'acteur continue de fonctionner (ne crash pas)
             }
         }
         logger.info("Acteur arrêté");
+    }
+
+    /**
+     * ✅ AJOUT : Notifie le superviseur d'une défaillance
+     */
+    private void notifierSuperviseur(Exception e) {
+        try {
+            // Créer dynamiquement un message ActorFailed via réflexion
+            Class<?> messagesClass = Class.forName("com.cypay.logs.acteur.Messages");
+            Class<?>[] innerClasses = messagesClass.getDeclaredClasses();
+
+            for (Class<?> innerClass : innerClasses) {
+                if (innerClass.getSimpleName().equals("ActorFailed")) {
+                    // Créer une instance de ActorFailed(actorName, error, timestamp)
+                    Object failureMessage = innerClass
+                            .getDeclaredConstructors()[0]
+                            .newInstance(this.nom, e, System.currentTimeMillis());
+
+                    // Envoyer au superviseur
+                    Message<?> message = new Message<>(this.nom, failureMessage);
+                    supervisor.envoyer((Message) message);
+
+                    logger.info("💥 Superviseur notifié de l'erreur");
+                    return;
+                }
+            }
+        } catch (Exception reflectionError) {
+            logger.erreur("Erreur lors de la notification du superviseur", reflectionError);
+        }
     }
 
     /**
@@ -130,6 +176,11 @@ public abstract class Acteur<T> implements Runnable {
         if (thread != null) {
             thread.interrupt();
         }
+    }
+
+    // ✅ AJOUT : Vérifie si l'acteur est actif
+    public boolean estActif() {
+        return running && thread != null && thread.isAlive();
     }
 
     public void receive(int port) {
@@ -154,8 +205,6 @@ public abstract class Acteur<T> implements Runnable {
 
         return httpClient.execute(request);
     }
-
-
 
     public String getNom() {
         return nom;

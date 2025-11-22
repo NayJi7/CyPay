@@ -3,25 +3,19 @@ package com.cypay.logs;
 import com.cypay.logs.acteur.*;
 
 /**
- * ✅ Point d'entrée du microservice Full Acteur
+ * ✅ Point d'entrée du microservice avec Supervision
  *
  * Architecture:
  *
- * [HTTP Request]
+ * [LogServiceMain]
  *     ↓
- * [CustomHttpReceiver] (port 8081)
- *     ↓ handleHttpRequest()
- * [LogHttpActeur mailbox]
- *     ↓ traiterMessage() dans thread dédié
- *     ↓ envoyerVers(databaseActeur, query)
- * [DatabaseActeur mailbox]
- *     ↓ traiterMessage() dans thread dédié
- *     ↓ SQL query
- *     ↓ envoyerVers(logHttpActeur, response)
- * [LogHttpActeur mailbox]
- *     ↓ traiterMessage()
- *     ↓ sendJsonResponse()
- * [HTTP Response]
+ * [SupervisorActeur] 🛡️
+ *     ├─ surveille → [DatabaseActeur]
+ *     ├─ surveille → [StatsActeur]
+ *     └─ surveille → [LogHttpActeur]
+ *
+ * Si un acteur crash :
+ *   Acteur → envoie ActorFailed → Superviseur → décide → Redémarre
  */
 public class LogServiceMain {
 
@@ -47,48 +41,47 @@ public class LogServiceMain {
         }
 
         System.out.println("========================================");
-        System.out.println("🚀 CyPay Log Service - Full Actor Model");
+        System.out.println("🚀 CyPay Log Service - Supervised Actor Model");
         System.out.println("========================================");
         System.out.println("Port      : " + port);
         System.out.println("Database  : " + jdbcUrl);
         System.out.println("========================================\n");
 
-        // ========== Création des acteurs ==========
+        // ========== Création du SUPERVISEUR ==========
 
-        System.out.println("1️⃣ Création des acteurs...");
+        System.out.println("1️⃣ Création du superviseur...");
 
-        // Acteur de base de données
-        DatabaseActeur databaseActeur = new DatabaseActeur(jdbcUrl, dbUser, dbPassword);
+        SupervisorActeur supervisor = new SupervisorActeur(
+                jdbcUrl,
+                dbUser,
+                dbPassword,
+                SupervisorActeur.SupervisionStrategy.RESTART  // ← Stratégie : redémarrer en cas d'erreur
+        );
 
-        // Acteur de statistiques
-        StatsActeur statsActeur = new StatsActeur(jdbcUrl, dbUser, dbPassword);
+        supervisor.demarrer();
+        System.out.println("   ✅ Superviseur démarré\n");
 
-        // Acteur HTTP (dépend des autres)
-        LogHttpActeur logHttpActeur = new LogHttpActeur(databaseActeur, statsActeur);
+        // ========== Initialisation des acteurs supervisés ==========
 
-        System.out.println("   ✅ 3 acteurs créés\n");
+        System.out.println("2️⃣ Initialisation des acteurs supervisés...");
 
-        // ========== Démarrage des acteurs ==========
+        supervisor.initializeChildren();
 
-        System.out.println("2️⃣ Démarrage des acteurs...");
-
-        databaseActeur.demarrer();
-        statsActeur.demarrer();
-        logHttpActeur.demarrer();
-
-        System.out.println("   ✅ Tous les acteurs démarrés\n");
+        System.out.println("   ✅ 3 acteurs créés et supervisés :");
+        System.out.println("      • DatabaseActeur");
+        System.out.println("      • StatsActeur");
+        System.out.println("      • LogHttpActeur\n");
 
         // ========== Démarrage du serveur HTTP ==========
 
         System.out.println("3️⃣ Démarrage du serveur HTTP...");
 
-        // ✅ Utilise le HttpReceiver du framework en mode avancé
         com.cypay.framework.http.HttpReceiver httpReceiver =
                 new com.cypay.framework.http.HttpReceiver();
 
-        // Handler qui passe directement à l'acteur
+        // Handler qui passe directement à l'acteur HTTP via le superviseur
         httpReceiver.start(port, (exchange, method, path, query, body) -> {
-            logHttpActeur.handleHttpRequest(exchange);
+            supervisor.getLogHttpActeur().handleHttpRequest(exchange);
         });
 
         System.out.println();
@@ -96,8 +89,14 @@ public class LogServiceMain {
         // ========== Informations ==========
 
         System.out.println("========================================");
-        System.out.println("✅ Service démarré avec succès !");
+        System.out.println("✅ Service avec supervision actif !");
         System.out.println("========================================\n");
+
+        System.out.println("🛡️ Supervision active :");
+        System.out.println("  • Stratégie        : RESTART (redémarrage auto)");
+        System.out.println("  • Max redémarrages : 3 par minute");
+        System.out.println("  • Acteurs surveillés : 3");
+        System.out.println("  • Health checks    : Disponibles\n");
 
         System.out.println("📚 Endpoints disponibles:");
         System.out.println("  GET    /logs                   → Tous les logs");
@@ -114,9 +113,18 @@ public class LogServiceMain {
         System.out.println("  curl http://localhost:" + port + "/logs/stats");
         System.out.println("  curl -X DELETE http://localhost:" + port + "/logs\n");
 
-        System.out.println("📊 Architecture:");
-        System.out.println("  [HTTP] → [LogHttpActeur] → [DatabaseActeur] → [PostgreSQL]");
-        System.out.println("                          → [StatsActeur] → [PostgreSQL]\n");
+        System.out.println("📊 Architecture supervisée:");
+        System.out.println("  [HTTP] → [LogHttpActeur]");
+        System.out.println("              ↓");
+        System.out.println("          [DatabaseActeur] ← 🛡️ Supervisé");
+        System.out.println("          [StatsActeur]    ← 🛡️ Supervisé");
+        System.out.println("              ↓");
+        System.out.println("          [PostgreSQL]\n");
+
+        System.out.println("🔧 En cas d'erreur:");
+        System.out.println("  • L'acteur notifie le superviseur");
+        System.out.println("  • Le superviseur redémarre l'acteur");
+        System.out.println("  • Le service continue de fonctionner\n");
 
         System.out.println("Appuyez sur Ctrl+C pour arrêter le service\n");
 
@@ -128,12 +136,27 @@ public class LogServiceMain {
             System.out.println("========================================");
 
             httpReceiver.stop();
-            logHttpActeur.arreter();
-            databaseActeur.arreter();
-            statsActeur.arreter();
+            supervisor.arreter();
 
             System.out.println("✅ Service arrêté proprement");
         }));
+
+        // ========== Health check périodique (optionnel) ==========
+
+        // Thread de health check toutes les 30 secondes
+        Thread healthCheckThread = new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(30000); // 30 secondes
+                    supervisor.triggerHealthCheck();
+                    //supervisor.envoyerVers(supervisor, new Messages.HealthCheck("health-check"));
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }, "HealthCheckThread");
+        healthCheckThread.setDaemon(true);
+        healthCheckThread.start();
 
         // ========== Garder le programme actif ==========
 

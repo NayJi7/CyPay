@@ -140,4 +140,22 @@ public class Messages {
             String error,
             int statusCode
     ) {}
+
+    // ========== SUPERVISION ==========
+
+    /**
+     * Notification de défaillance d'un acteur
+     */
+    public record ActorFailed(
+            String actorName,
+            Throwable error,
+            long timestamp
+    ) {}
+
+    /**
+     * Demande de vérification de santé
+     */
+    public record HealthCheck(
+            String requestId
+    ) {}
 }
