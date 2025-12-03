@@ -1,164 +1,91 @@
 package com.cypay.logs;
 
 import com.cypay.logs.acteur.*;
+import com.cypay.framework.http.HttpReceiver;
 
-/**
- * ✅ Point d'entrée du microservice avec Supervision
- *
- * Architecture:
- *
- * [LogServiceMain]
- *     ↓
- * [SupervisorActeur] 🛡️
- *     ├─ surveille → [DatabaseActeur]
- *     ├─ surveille → [StatsActeur]
- *     └─ surveille → [LogHttpActeur]
- *
- * Si un acteur crash :
- *   Acteur → envoie ActorFailed → Superviseur → décide → Redémarre
- */
 public class LogServiceMain {
 
     public static void main(String[] args) {
-
-        // Configuration par défaut
         int port = 8081;
+        int monitoringPort = 9091;
         String jdbcUrl = "jdbc:postgresql://db.yldotyunksweuovyknzg.supabase.co:5432/postgres";
         String dbUser = "postgres";
         String dbPassword = "Cypay.Cytech";
 
-        // Parser les arguments
+        // Parser arguments
         for (String arg : args) {
-            if (arg.startsWith("--port=")) {
-                port = Integer.parseInt(arg.substring(7));
-            } else if (arg.startsWith("--db.url=")) {
-                jdbcUrl = arg.substring(9);
-            } else if (arg.startsWith("--db.user=")) {
-                dbUser = arg.substring(10);
-            } else if (arg.startsWith("--db.password=")) {
-                dbPassword = arg.substring(14);
-            }
+            if (arg.startsWith("--port=")) port = Integer.parseInt(arg.substring(7));
+            else if (arg.startsWith("--monitoring.port=")) monitoringPort = Integer.parseInt(arg.substring(18));
+            else if (arg.startsWith("--db.url=")) jdbcUrl = arg.substring(9);
+            else if (arg.startsWith("--db.user=")) dbUser = arg.substring(10);
+            else if (arg.startsWith("--db.password=")) dbPassword = arg.substring(14);
         }
 
-        System.out.println("========================================");
-        System.out.println("🚀 CyPay Log Service - Supervised Actor Model");
-        System.out.println("========================================");
-        System.out.println("Port      : " + port);
-        System.out.println("Database  : " + jdbcUrl);
-        System.out.println("========================================\n");
-
-        // ========== Création du SUPERVISEUR ==========
-
-        System.out.println("1️⃣ Création du superviseur...");
-
-        SupervisorActeur supervisor = new SupervisorActeur(
-                jdbcUrl,
-                dbUser,
-                dbPassword,
-                SupervisorActeur.SupervisionStrategy.RESTART  // ← Stratégie : redémarrer en cas d'erreur
-        );
-
-        supervisor.demarrer();
-        System.out.println("   ✅ Superviseur démarré\n");
-
-        // ========== Initialisation des acteurs supervisés ==========
-
-        System.out.println("2️⃣ Initialisation des acteurs supervisés...");
-
-        supervisor.initializeChildren();
-
-        System.out.println("   ✅ 3 acteurs créés et supervisés :");
-        System.out.println("      • DatabaseActeur");
-        System.out.println("      • StatsActeur");
-        System.out.println("      • LogHttpActeur\n");
-
-        // ========== Démarrage du serveur HTTP ==========
-
-        System.out.println("3️⃣ Démarrage du serveur HTTP...");
-
-        com.cypay.framework.http.HttpReceiver httpReceiver =
-                new com.cypay.framework.http.HttpReceiver();
-
-        // Handler qui passe directement à l'acteur HTTP via le superviseur
-        httpReceiver.start(port, (exchange, method, path, query, body) -> {
-            supervisor.getLogHttpActeur().handleHttpRequest(exchange);
-        });
-
+        System.out.println("╔════════════════════════════════════════════════╗");
+        System.out.println("║   🚀 DÉMARRAGE DU SYSTÈME LOGS                ║");
+        System.out.println("╚════════════════════════════════════════════════╝");
         System.out.println();
 
-        // ========== Informations ==========
+        // 1. Superviseur
+        System.out.println("📋 Étape 1/4 : Initialisation du superviseur");
+        SupervisorActeur Supervisor = new SupervisorActeur(jdbcUrl, dbUser, dbPassword);
+        Supervisor.demarrer();
+        System.out.println("✅ Supervisor démarré");
+        System.out.println();
 
-        System.out.println("========================================");
-        System.out.println("✅ Service avec supervision actif !");
-        System.out.println("========================================\n");
+        // 2. Acteurs métier
+        System.out.println("📋 Étape 2/4 : Initialisation des acteurs métier");
+        Supervisor.initializeChildren();
+        System.out.println();
 
-        System.out.println("🛡️ Supervision active :");
-        System.out.println("  • Stratégie        : RESTART (redémarrage auto)");
-        System.out.println("  • Max redémarrages : 3 par minute");
-        System.out.println("  • Acteurs surveillés : 3");
-        System.out.println("  • Health checks    : Disponibles\n");
+        // 3. Monitoring
+        System.out.println("📋 Étape 3/4 : Création de l'acteur de monitoring");
+        LogsMonitoringActeur monitoringActeur = new LogsMonitoringActeur(Supervisor);
+        Supervisor.enregistrerActeur("LogsMonitoringActeur", monitoringActeur);
+        Supervisor.demarrerActeur("LogsMonitoringActeur");
+        monitoringActeur.startMonitoring(monitoringPort);
+        System.out.println();
 
-        System.out.println("📚 Endpoints disponibles:");
-        System.out.println("  GET    /logs                   → Tous les logs");
-        System.out.println("  GET    /logs?limit=50          → Limiter à 50 résultats");
-        System.out.println("  GET    /logs/actor/{nom}       → Logs d'un acteur");
-        System.out.println("  GET    /logs/level/{niveau}    → Logs par niveau (INFO, ERROR)");
-        System.out.println("  GET    /logs/stats             → Statistiques globales");
-        System.out.println("  DELETE /logs                   → Supprimer tous les logs\n");
+        // 4. HTTP principal
+        System.out.println("📋 Étape 4/4 : Démarrage du serveur HTTP principal");
+        HttpReceiver httpReceiver = new HttpReceiver();
+        httpReceiver.start(port, (exchange, method, path, query, body) -> {
+            Supervisor.getLogHttpActeur().handleHttpRequest(exchange);
+        });
+        System.out.println("✅ Serveur HTTP démarré sur le port " + port);
+        System.out.println();
 
-        System.out.println("💡 Exemples de requêtes:");
-        System.out.println("  curl http://localhost:" + port + "/logs?limit=10");
-        System.out.println("  curl http://localhost:" + port + "/logs/actor/PaymentProcessor");
-        System.out.println("  curl http://localhost:" + port + "/logs/level/ERROR");
-        System.out.println("  curl http://localhost:" + port + "/logs/stats");
-        System.out.println("  curl -X DELETE http://localhost:" + port + "/logs\n");
+        System.out.println("╔════════════════════════════════════════════════╗");
+        System.out.println("║   ✅ SYSTÈME OPÉRATIONNEL                     ║");
+        System.out.println("╚════════════════════════════════════════════════╝");
+        System.out.println();
+        System.out.println("🌐 API Logs : http://localhost:" + port);
+        System.out.println("🔍 API Monitoring : http://localhost:" + monitoringPort);
+        System.out.println("   GET    /health");
+        System.out.println("   GET    /stats");
+        System.out.println();
 
-        System.out.println("📊 Architecture supervisée:");
-        System.out.println("  [HTTP] → [LogHttpActeur]");
-        System.out.println("              ↓");
-        System.out.println("          [DatabaseActeur] ← 🛡️ Supervisé");
-        System.out.println("          [StatsActeur]    ← 🛡️ Supervisé");
-        System.out.println("              ↓");
-        System.out.println("          [PostgreSQL]\n");
+        // Health check initial
+        try {
+            Thread.sleep(2000);
+            Supervisor.envoyerObjet(new SupervisorActeur.HealthCheckRequest());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
-        System.out.println("🔧 En cas d'erreur:");
-        System.out.println("  • L'acteur notifie le superviseur");
-        System.out.println("  • Le superviseur redémarre l'acteur");
-        System.out.println("  • Le service continue de fonctionner\n");
-
-        System.out.println("Appuyez sur Ctrl+C pour arrêter le service\n");
-
-        // ========== Shutdown hook ==========
-
+        // Shutdown
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("\n========================================");
-            System.out.println("🛑 Arrêt du service...");
-            System.out.println("========================================");
-
+            System.out.println("\n🛑 Arrêt du système...");
+            monitoringActeur.stopMonitoring();
             httpReceiver.stop();
-            supervisor.arreter();
-
-            System.out.println("✅ Service arrêté proprement");
-        }));
-
-        // ========== Health check périodique (optionnel) ==========
-
-        // Thread de health check toutes les 30 secondes
-        Thread healthCheckThread = new Thread(() -> {
-            while (true) {
-                try {
-                    Thread.sleep(30000); // 30 secondes
-                    supervisor.triggerHealthCheck();
-                    //supervisor.envoyerVers(supervisor, new Messages.HealthCheck("health-check"));
-                } catch (InterruptedException e) {
-                    break;
-                }
+            Supervisor.envoyerObjet(new SupervisorActeur.ShutdownRequest());
+            try {
+                Thread.sleep(1500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
-        }, "HealthCheckThread");
-        healthCheckThread.setDaemon(true);
-        healthCheckThread.start();
-
-        // ========== Garder le programme actif ==========
+            System.out.println("✅ Système arrêté");
+        }));
 
         try {
             Thread.currentThread().join();
