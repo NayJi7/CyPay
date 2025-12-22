@@ -1,0 +1,135 @@
+===========================================
+  MICROSERVICE TRANSACTIONS - API Examples
+===========================================
+
+Port: 8081
+Base URL: http://localhost:8081/transactions
+
+-------------------------------------------
+1. ACHETER DE LA CRYPTO (BUY)
+-------------------------------------------
+
+Windows:
+curl -X POST "http://localhost:8081/transactions/buy?userId=1&cryptoUnit=BTC&amount=0.5&paymentUnit=EUR"
+
+Linux/Mac:
+curl -X POST "http://localhost:8081/transactions/buy?userId=1&cryptoUnit=BTC&amount=0.5&paymentUnit=EUR"
+
+Paramètres:
+- userId: ID de l'utilisateur
+- cryptoUnit: BTC, ETH
+- amount: Montant de crypto à acheter
+- paymentUnit: EUR ou USD
+
+-------------------------------------------
+2. VENDRE DE LA CRYPTO (SELL)
+-------------------------------------------
+
+Windows:
+curl -X POST "http://localhost:8081/transactions/sell?userId=1&cryptoUnit=BTC&amount=0.3&targetUnit=EUR"
+
+Linux/Mac:
+curl -X POST "http://localhost:8081/transactions/sell?userId=1&cryptoUnit=BTC&amount=0.3&targetUnit=EUR"
+
+Paramètres:
+- userId: ID de l'utilisateur
+- cryptoUnit: BTC, ETH
+- amount: Montant de crypto à vendre
+- targetUnit: EUR ou USD
+
+-------------------------------------------
+3. VIREMENT DE CRYPTO (TRANSFER)
+-------------------------------------------
+
+Windows:
+curl -X POST "http://localhost:8081/transactions/transfer?fromUserId=1&toUserId=2&cryptoUnit=BTC&amount=0.1"
+
+Linux/Mac:
+curl -X POST "http://localhost:8081/transactions/transfer?fromUserId=1&toUserId=2&cryptoUnit=BTC&amount=0.1"
+
+Paramètres:
+- fromUserId: ID de l'expéditeur
+- toUserId: ID du destinataire
+- cryptoUnit: BTC, ETH
+- amount: Montant de crypto à transférer
+
+-------------------------------------------
+4. CRÉER UN ORDRE PROGRAMMÉ (ORDER)
+-------------------------------------------
+
+Windows:
+curl -X POST "http://localhost:8081/transactions/order?userId=1&orderType=BUY&cryptoUnit=BTC&amount=0.5&targetPrice=50000"
+
+Linux/Mac:
+curl -X POST "http://localhost:8081/transactions/order?userId=1&orderType=BUY&cryptoUnit=BTC&amount=0.5&targetPrice=50000"
+
+Paramètres:
+- userId: ID de l'utilisateur
+- orderType: BUY ou SELL
+- cryptoUnit: BTC, ETH
+- amount: Montant de crypto
+- targetPrice: Prix cible pour déclencher l'ordre
+
+-------------------------------------------
+5. HISTORIQUE DES TRANSACTIONS (GET)
+-------------------------------------------
+
+Historique d'un utilisateur:
+curl -X GET "http://localhost:8081/transactions/history/1"
+
+Toutes les transactions:
+curl -X GET "http://localhost:8081/transactions/all"
+
+Transactions par type:
+curl -X GET "http://localhost:8081/transactions/type/BUY"
+curl -X GET "http://localhost:8081/transactions/type/SELL"
+curl -X GET "http://localhost:8081/transactions/type/TRANSFER"
+curl -X GET "http://localhost:8081/transactions/type/ORDER"
+
+-------------------------------------------
+6. H2 DATABASE CONSOLE
+-------------------------------------------
+
+URL: http://localhost:8081/h2-console
+
+Paramètres de connexion:
+- JDBC URL: jdbc:h2:mem:transactionsdb
+- Username: sa
+- Password: (laisser vide)
+
+-------------------------------------------
+7. ACTUATOR ENDPOINTS (Monitoring)
+-------------------------------------------
+
+Health check:
+curl -X GET "http://localhost:8081/actuator/health"
+
+Metrics:
+curl -X GET "http://localhost:8081/actuator/metrics"
+
+Circuit Breakers:
+curl -X GET "http://localhost:8081/actuator/health"
+
+===========================================
+NOTES IMPORTANTES
+===========================================
+
+1. Le microservice tourne sur le port 8081
+2. Le microservice User tourne sur le port 8080
+3. Le microservice Wallet tournera sur le port 8082 (à créer)
+
+4. Les appels vers Wallet sont préparés dans les agents mais commentés:
+   - BuyAgent: Vérifie solde EUR/USD, débite EUR/USD, crédite crypto
+   - SellAgent: Vérifie solde crypto, débite crypto, crédite EUR/USD
+   - TransferAgent: Effectue virement entre 2 utilisateurs
+
+5. Pour activer les appels Wallet plus tard:
+   - Décommenter le code dans les agents (BuyAgent, SellAgent, TransferAgent)
+   - Décommenter wallet.service.url dans application.properties
+   - Créer le microservice Wallet avec les endpoints:
+     * GET /wallets/{userId}/balance/{unit}
+     * POST /wallets/{userId}/debit
+     * POST /wallets/{userId}/credit
+     * POST /wallets/transfer
+
+===========================================

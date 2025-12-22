@@ -1,0 +1,22 @@
+server:
+  port: 8082
+
+# Configuration des services externes
+user:
+  service:
+    url: http://localhost:8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://db.yldotyunksweuovyknzg.supabase.co:5432/postgres
+    username: postgres
+    password: Cypay.Cytech
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
