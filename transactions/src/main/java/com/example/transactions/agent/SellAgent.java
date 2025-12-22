@@ -1,7 +1,7 @@
 package com.example.transactions.agent;
 
 import com.cypay.framework.acteur.Acteur;
-import com.cypay.framework.acteur.HttpResponse;
+import com.cypay.framework.http.HttpResponse;
 import com.example.transactions.message.SellMessage;
 import com.example.transactions.message.CreateBlockchainMessage;
 import com.example.transactions.model.TransactionType;

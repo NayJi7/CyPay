@@ -6,7 +6,7 @@ import com.cypay.framework.http.HttpReceiver;
 public class LogServiceMain {
 
     public static void main(String[] args) {
-        int port = 8081;
+        int port = 8084;
         int monitoringPort = 9091;
         String jdbcUrl = "jdbc:postgresql://db.yldotyunksweuovyknzg.supabase.co:5432/postgres";
         String dbUser = "postgres";

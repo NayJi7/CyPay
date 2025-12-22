@@ -35,15 +35,17 @@ public class SupervisorMain {
 
         System.out.println("📋 Étape 2/3 : Enregistrement des microservices");
 
-        // Microservice Logs (port 8081, monitoring 9091)
-        superviseur.enregistrerMicroservice("logs-service", "localhost", 8081, 9091);
+        // Microservice Logs (port 8084, monitoring 9091)
+        superviseur.enregistrerMicroservice("logs-service", "localhost", 8084, 9091);
 
         // Microservice User (port 8082, monitoring 9090)
         superviseur.enregistrerMicroservice("user-service", "localhost", 8082, 9090);
 
-        // Ajouter d'autres microservices ici...
-        // superviseur.enregistrerMicroservice("payment-service", "localhost", 8083, 9092);
-        // superviseur.enregistrerMicroservice("notification-service", "localhost", 8084, 9093);
+        // Microservice Transactions (port 8081)
+        superviseur.enregistrerMicroservice("transactions-service", "localhost", 8081, 9092);
+
+        // Microservice Wallet (port 8083)
+        superviseur.enregistrerMicroservice("wallet-service", "localhost", 8083, 9093);
 
         System.out.println();
 

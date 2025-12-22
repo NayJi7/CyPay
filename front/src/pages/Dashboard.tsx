@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-interface Crypto {
-  id: string;
-  symbol: string;
-  name: string;
+interface Wallet {
+  id: number;
+  userId: number;
+  currency: string;
   balance: number;
-  price: number;
 }
 
 interface Transaction {
@@ -19,11 +19,19 @@ interface Transaction {
 }
 
 const Dashboard: React.FC = () => {
-  const [cryptos, setCryptos] = useState<Crypto[]>([
-    { id: '1', symbol: 'BTC', name: 'Bitcoin', balance: 0.5, price: 45000 },
-    { id: '2', symbol: 'ETH', name: 'Ethereum', balance: 2.3, price: 3000 },
-    { id: '3', symbol: 'SOL', name: 'Solana', balance: 10, price: 100 },
-  ]);
+  const navigate = useNavigate();
+  const [wallets, setWallets] = useState<Wallet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // Mock prices for now since we don't have a price feed API
+  const [prices] = useState<Record<string, number>>({
+    BTC: 45000,
+    ETH: 3000,
+    SOL: 100,
+    EUR: 1,
+    USD: 0.92,
+  });
 
   const [transactionForm, setTransactionForm] = useState({
     crypto: '',
@@ -35,47 +43,118 @@ const Dashboard: React.FC = () => {
     transferType: 'crypto' as 'crypto' | 'fiat',
   });
 
-  const [userProfile] = useState({
-    name: 'Jean Dupont',
-    email: 'jean.dupont@email.com',
-    avatar: 'https://ui-avatars.com/api/?name=Jean+Dupont&background=8b5cf6&color=fff&size=128'
+  const [userProfile, setUserProfile] = useState({
+    name: '',
+    email: '',
+    avatar: ''
   });
 
+  // Mock history since no API endpoint exists for it yet
   const [transactionHistory] = useState<Transaction[]>([
     { id: '1', type: 'buy', crypto: 'BTC', amount: 0.2, date: '2024-12-05' },
     { id: '2', type: 'transfer', currency: 'EUR', amount: 500, recipient: 'alice@email.com', date: '2024-12-05' },
-    { id: '3', type: 'sell', crypto: 'ETH', amount: 0.5, date: '2024-12-04' },
-    { id: '4', type: 'transfer', crypto: 'BTC', amount: 0.1, recipient: 'bob@email.com', date: '2024-12-04' },
-    { id: '5', type: 'buy', crypto: 'SOL', amount: 5, date: '2024-12-03' },
-    { id: '6', type: 'buy', crypto: 'BTC', amount: 0.3, date: '2024-12-02' },
   ]);
 
-  const totalValue = cryptos.reduce(
-    (sum, crypto) => sum + crypto.balance * crypto.price,
-    0
-  );
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    const userEmail = localStorage.getItem('userEmail');
+    const userPseudo = localStorage.getItem('userPseudo');
+    const isLoggedIn = localStorage.getItem('isLoggedIn');
 
-  const handleTransaction = () => {
-    console.log('Transaction:', transactionForm);
-    
-    if (transactionForm.type === 'transfer') {
-      const asset = transactionForm.transferType === 'crypto' ? transactionForm.crypto : transactionForm.currency;
-      alert(`Virement de ${transactionForm.amount} ${asset} vers ${transactionForm.recipient} envoyé !`);
-    } else {
-      const asset = transactionForm.mode === 'crypto' ? transactionForm.crypto : transactionForm.currency;
-      const typeLabel = transactionForm.type === 'buy' ? 'Achat' : 'Vente';
-      alert(`${typeLabel} de ${transactionForm.amount} ${asset} envoyé !`);
+    if (!isLoggedIn || !userId) {
+      navigate('/');
+      return;
     }
-    
-    setTransactionForm({ 
-      crypto: '', 
-      currency: 'EUR', 
-      amount: '', 
-      recipient: '',
-      type: 'buy', 
-      mode: 'crypto',
-      transferType: 'crypto'
+
+    setUserProfile({
+      name: userPseudo || 'Utilisateur',
+      email: userEmail || '',
+      avatar: `https://ui-avatars.com/api/?name=${userPseudo || 'User'}&background=8b5cf6&color=fff&size=128`
     });
+
+    fetchWallets(userId);
+  }, [navigate]);
+
+  const fetchWallets = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/wallets/${userId}`);
+      if (!response.ok) {
+        throw new Error('Erreur lors du chargement des wallets');
+      }
+      const data = await response.json();
+      setWallets(data);
+    } catch (err) {
+      console.error(err);
+      setError('Impossible de charger vos portefeuilles');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalValue = wallets.reduce((sum, wallet) => {
+    const price = prices[wallet.currency] || 0;
+    // If currency is EUR/USD, price is 1 (or exchange rate). If crypto, use mock price.
+    // Assuming wallet.currency holds the symbol (BTC, EUR, etc.)
+    return sum + wallet.balance * price;
+  }, 0);
+
+  const handleTransaction = async () => {
+    const userId = localStorage.getItem('userId');
+    if (!userId) return;
+
+    try {
+      if (transactionForm.type === 'transfer') {
+        alert('Les virements ne sont pas encore disponibles via l\'API.');
+        return;
+      }
+
+      const endpoint = transactionForm.type === 'buy' ? '/transactions/buy' : '/transactions/sell';
+      
+      // Construct payload based on API requirements
+      const payload = transactionForm.type === 'buy' 
+        ? {
+            userId: parseInt(userId),
+            cryptoUnit: transactionForm.crypto,
+            amount: parseFloat(transactionForm.amount),
+            paymentUnit: 'EUR' // Defaulting to EUR for payment
+          }
+        : {
+            userId: parseInt(userId),
+            cryptoUnit: transactionForm.crypto,
+            amount: parseFloat(transactionForm.amount),
+            targetUnit: 'EUR' // Defaulting to EUR for target
+          };
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Erreur lors de la transaction');
+      }
+
+      alert(`Transaction réussie : ${data.message || 'Opération en cours'}`);
+      
+      // Refresh wallets after a short delay to allow backend to process
+      setTimeout(() => fetchWallets(userId), 1000);
+
+      setTransactionForm({ 
+        crypto: '', 
+        currency: 'EUR', 
+        amount: '', 
+        recipient: '',
+        type: 'buy', 
+        mode: 'crypto',
+        transferType: 'crypto'
+      });
+
+    } catch (err: any) {
+      alert(`Erreur: ${err.message}`);
+    }
   };
 
   return (
@@ -86,7 +165,7 @@ const Dashboard: React.FC = () => {
           <h1 className="text-5xl font-bold text-white mb-2">
             ${totalValue.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
           </h1>
-          <p className="text-gray-400 text-sm">Valeur totale du portfolio</p>
+          <p className="text-gray-400 text-sm">Valeur totale estimée du portfolio (EUR)</p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -104,12 +183,21 @@ const Dashboard: React.FC = () => {
                 />
                 <h3 className="text-xl font-semibold text-white">{userProfile.name}</h3>
                 <p className="text-gray-400 text-sm">{userProfile.email}</p>
+                <button 
+                  onClick={() => {
+                    localStorage.clear();
+                    navigate('/');
+                  }}
+                  className="mt-4 text-sm text-red-400 hover:text-red-300 underline"
+                >
+                  Se déconnecter
+                </button>
               </div>
             </div>
 
             {/* Historique des Transactions */}
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-              <h2 className="text-xl font-bold text-white mb-4">Historique</h2>
+              <h2 className="text-xl font-bold text-white mb-4">Historique (Mock)</h2>
               
               <div className="space-y-3 max-h-96 overflow-y-auto scrollbar-custom pr-2">
                 <style>{`
@@ -182,30 +270,37 @@ const Dashboard: React.FC = () => {
             {/* Wallet Section */}
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
               <h2 className="text-2xl font-bold text-white mb-4">Mon Wallet</h2>
-              <div className="space-y-4">
-                {cryptos.map((crypto) => (
-                  <div
-                    key={crypto.id}
-                    className="bg-white/5 rounded-xl p-4 flex items-center justify-between hover:bg-white/10 transition"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
-                        {crypto.symbol.substring(0, 2)}
+              {loading ? (
+                <p className="text-white">Chargement...</p>
+              ) : error ? (
+                <p className="text-red-400">{error}</p>
+              ) : (
+                <div className="space-y-4">
+                  {wallets.length === 0 && <p className="text-gray-400">Aucun portefeuille trouvé.</p>}
+                  {wallets.map((wallet) => (
+                    <div
+                      key={wallet.id}
+                      className="bg-white/5 rounded-xl p-4 flex items-center justify-between hover:bg-white/10 transition"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
+                          {wallet.currency.substring(0, 2)}
+                        </div>
+                        <div>
+                          <p className="text-white font-semibold">{wallet.currency}</p>
+                          <p className="text-gray-400 text-sm">Solde disponible</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-white font-semibold">{crypto.name}</p>
-                        <p className="text-gray-400 text-sm">{crypto.symbol}</p>
+                      <div className="text-right">
+                        <p className="text-white font-semibold">{wallet.balance}</p>
+                        <p className="text-gray-400 text-sm">
+                          ~ {(wallet.balance * (prices[wallet.currency] || 1)).toLocaleString('fr-FR')} EUR
+                        </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-white font-semibold">{crypto.balance}</p>
-                      <p className="text-gray-400 text-sm">
-                        ${(crypto.balance * crypto.price).toLocaleString('fr-FR')}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Transaction Form */}
@@ -262,121 +357,8 @@ const Dashboard: React.FC = () => {
                 {transactionForm.type === 'transfer' ? (
                   // Formulaire de virement
                   <>
-                    <div>
-                      <label className="block text-gray-300 mb-2 text-sm">
-                        Type d'actif à virer
-                      </label>
-                      <div className="flex gap-4">
-                        <button
-                          onClick={() =>
-                            setTransactionForm({ ...transactionForm, transferType: 'crypto' })
-                          }
-                          className={`flex-1 py-3 rounded-lg font-semibold transition ${
-                            transactionForm.transferType === 'crypto'
-                              ? 'bg-purple-500 text-white'
-                              : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                          }`}
-                        >
-                          Crypto
-                        </button>
-                        <button
-                          onClick={() =>
-                            setTransactionForm({ ...transactionForm, transferType: 'fiat' })
-                          }
-                          className={`flex-1 py-3 rounded-lg font-semibold transition ${
-                            transactionForm.transferType === 'fiat'
-                              ? 'bg-purple-500 text-white'
-                              : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                          }`}
-                        >
-                          Monnaie
-                        </button>
-                      </div>
-                    </div>
-
-                    {transactionForm.transferType === 'crypto' ? (
-                      <div>
-                        <label className="block text-gray-300 mb-2 text-sm">
-                          Crypto
-                        </label>
-                        <select
-                          value={transactionForm.crypto}
-                          onChange={(e) =>
-                            setTransactionForm({
-                              ...transactionForm,
-                              crypto: e.target.value,
-                            })
-                          }
-                          className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          style={{ colorScheme: 'dark' }}
-                        >
-                          <option value="" style={{ backgroundColor: '#1e293b', color: 'white' }}>Sélectionne une crypto</option>
-                          {cryptos.map((crypto) => (
-                            <option key={crypto.id} value={crypto.symbol} style={{ backgroundColor: '#1e293b', color: 'white' }}>
-                              {crypto.name} ({crypto.symbol})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="block text-gray-300 mb-2 text-sm">
-                          Monnaie
-                        </label>
-                        <select
-                          value={transactionForm.currency}
-                          onChange={(e) =>
-                            setTransactionForm({
-                              ...transactionForm,
-                              currency: e.target.value,
-                            })
-                          }
-                          className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          style={{ colorScheme: 'dark' }}
-                        >
-                          <option value="EUR" style={{ backgroundColor: '#1e293b', color: 'white' }}>Euro (EUR)</option>
-                          <option value="USD" style={{ backgroundColor: '#1e293b', color: 'white' }}>Dollar (USD)</option>
-                          <option value="GBP" style={{ backgroundColor: '#1e293b', color: 'white' }}>Livre Sterling (GBP)</option>
-                          <option value="CHF" style={{ backgroundColor: '#1e293b', color: 'white' }}>Franc Suisse (CHF)</option>
-                        </select>
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="block text-gray-300 mb-2 text-sm">
-                        Bénéficiaire
-                      </label>
-                      <input
-                        type="text"
-                        value={transactionForm.recipient}
-                        onChange={(e) =>
-                          setTransactionForm({
-                            ...transactionForm,
-                            recipient: e.target.value,
-                          })
-                        }
-                        placeholder="email@exemple.com ou adresse wallet"
-                        className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-gray-300 mb-2 text-sm">
-                        Montant
-                      </label>
-                      <input
-                        type="number"
-                        step="0.0001"
-                        value={transactionForm.amount}
-                        onChange={(e) =>
-                          setTransactionForm({
-                            ...transactionForm,
-                            amount: e.target.value,
-                          })
-                        }
-                        placeholder="0.00"
-                        className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
+                    <div className="p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+                      <p className="text-yellow-200 text-sm">Les virements ne sont pas encore disponibles.</p>
                     </div>
                   </>
                 ) : (
@@ -398,11 +380,9 @@ const Dashboard: React.FC = () => {
                         style={{ colorScheme: 'dark' }}
                       >
                         <option value="" style={{ backgroundColor: '#1e293b', color: 'white' }}>Sélectionne une crypto</option>
-                        {cryptos.map((crypto) => (
-                          <option key={crypto.id} value={crypto.symbol} style={{ backgroundColor: '#1e293b', color: 'white' }}>
-                            {crypto.name} ({crypto.symbol})
-                          </option>
-                        ))}
+                        <option value="BTC" style={{ backgroundColor: '#1e293b', color: 'white' }}>Bitcoin (BTC)</option>
+                        <option value="ETH" style={{ backgroundColor: '#1e293b', color: 'white' }}>Ethereum (ETH)</option>
+                        <option value="SOL" style={{ backgroundColor: '#1e293b', color: 'white' }}>Solana (SOL)</option>
                       </select>
                     </div>
 

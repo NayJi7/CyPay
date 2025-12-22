@@ -1,5 +1,9 @@
 server:
-  port: 8082
+  port: 8083
+
+jwt:
+  secret: xK8vN2pQ5wR7tY9uI3oP6aS8dF1gH4jK7lZ0xC3vB5nM2qW8eR4tY6uI9oP0aS3dF6gH9jK2lZ5xC8vB1nM4qW7e
+  expiration: 3600000
 
 # Configuration des services externes
 user:
@@ -8,10 +12,13 @@ user:
 
 spring:
   datasource:
-    url: jdbc:postgresql://db.yldotyunksweuovyknzg.supabase.co:5432/postgres
+    url: jdbc:postgresql://db.yldotyunksweuovyknzg.supabase.co:5432/postgres?sslmode=require
     username: postgres
     password: Cypay.Cytech
     driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
   jpa:
     hibernate:
       ddl-auto: update

@@ -1,9 +1,10 @@
 package com.example.wallet.client;
 
+import com.cypay.framework.acteur.ActeurHttpClient;
+import com.cypay.framework.acteur.ActeurLogger;
+import com.cypay.framework.http.HttpResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.client.HttpClientErrorException;
 
 /**
  * Client HTTP pour communiquer avec le microservice User
@@ -11,14 +12,13 @@ import org.springframework.web.client.HttpClientErrorException;
 @Component
 public class UserServiceClient {
 
-    private final RestTemplate restTemplate;
+    private final ActeurHttpClient httpClient;
     private final String userServiceUrl;
 
     public UserServiceClient(
-            RestTemplate restTemplate,
             @Value("${user.service.url:http://localhost:8080}") String userServiceUrl) {
-        this.restTemplate = restTemplate;
         this.userServiceUrl = userServiceUrl;
+        this.httpClient = new ActeurHttpClient(new ActeurLogger("UserServiceClient"));
     }
 
     /**
@@ -29,15 +29,20 @@ public class UserServiceClient {
     public boolean userExists(Long userId) {
         try {
             String url = userServiceUrl + "/users/" + userId;
-            restTemplate.getForObject(url, Object.class);
-            return true;
-        } catch (HttpClientErrorException.NotFound e) {
-            return false;
+            HttpResponse response = httpClient.get(url);
+            
+            if (response.getStatusCode() == 200) {
+                return true;
+            } else if (response.getStatusCode() == 404) {
+                return false;
+            } else {
+                // En cas d'erreur autre que 404, on log
+                System.err.println("Erreur lors de la vérification de l'utilisateur " + userId + ": Status " + response.getStatusCode());
+                return true; // Mode dégradé
+            }
         } catch (Exception e) {
-            // En cas d'erreur de communication, on log mais on laisse passer
-            // (pour éviter de bloquer complètement le service si User est down)
             System.err.println("Erreur lors de la vérification de l'utilisateur " + userId + ": " + e.getMessage());
-            return true; // Mode dégradé : on autorise
+            return true; // Mode dégradé
         }
     }
 }

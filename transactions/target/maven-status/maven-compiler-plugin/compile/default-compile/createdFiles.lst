@@ -1,12 +1,15 @@
 com/example/transactions/repository/TransactionRepository.class
-com/example/transactions/controller/TransactionController.class
-com/example/transactions/message/OrderMessage.class
 com/example/transactions/agent/BuyAgent.class
+com/example/transactions/message/OrderMessage.class
+com/example/transactions/agent/TransactionHttpActeur.class
+com/example/transactions/agent/TransactionHttpActeur$ErrorResponse.class
 com/example/transactions/message/CreateBlockchainMessage.class
-com/example/transactions/model/CryptoUnit.class
+com/example/transactions/agent/TransactionHttpActeur$MessageResponse.class
 com/example/transactions/model/TransactionStatus.class
-com/example/transactions/message/SellMessage.class
+com/example/transactions/model/CryptoUnit.class
+com/example/transactions/agent/TransactionHttpActeur$BuyRequest.class
 com/example/transactions/agent/TransferAgent.class
+com/example/transactions/message/SellMessage.class
 com/example/transactions/agent/OrderAgent.class
 com/example/transactions/agent/SellAgent.class
 com/example/transactions/TransactionApplication.class
@@ -14,6 +17,7 @@ com/example/transactions/agent/SupervisorAgent.class
 com/example/transactions/model/Transaction.class
 com/example/transactions/service/DatabaseService.class
 com/example/transactions/message/TransferMessage.class
+com/example/transactions/agent/TransactionHttpActeur$SellRequest.class
 com/example/transactions/message/BuyMessage.class
 com/example/transactions/agent/CreateBlockchainAgent.class
 com/example/transactions/model/TransactionType.class
