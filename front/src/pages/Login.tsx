@@ -84,15 +84,13 @@ const Login: React.FC = () => {
           
           {/* Header Section */}
           <div className="p-8 text-center border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 mb-6 shadow-lg shadow-cyan-500/20">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 mb-6 shadow-lg shadow-cyan-500/20 overflow-hidden">
+              <img src="/icon.jpg" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-slate-400 tracking-tight">
-              CYPAY<span className="text-cyan-500">.IO</span>
+              CY<span className="text-cyan-500">PAY</span>
             </h1>
-            <p className="text-slate-400 mt-2 text-sm font-mono tracking-widest uppercase">Protocol v2.0 Access</p>
+            <p className="text-slate-400 mt-2 text-sm font-mono tracking-widest uppercase">Votre système de paiement et d'investissement sécurisé</p>
           </div>
 
           {/* Form Section */}

@@ -356,8 +356,8 @@ const Dashboard: React.FC = () => {
       <nav className="border-b border-white/10 bg-[#050b14]/90 backdrop-blur sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-3">
-             <div className="w-10 h-10 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.5)]">
-               <span className="font-bold text-white text-xl">C</span>
+             <div className="w-12 h-12 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.5)] overflow-hidden">
+               <img src="/icon.jpg" alt="Logo" className="w-full h-full object-cover" />
              </div>
              <div>
                <h1 className="text-xl font-bold text-white tracking-tight">DASHBOARD <span className="text-cyan-500 font-mono text-xs opacity-80">v2.4</span></h1>
@@ -420,7 +420,7 @@ const Dashboard: React.FC = () => {
             <div>
               <h3 className="text-lg font-bold text-white mb-4 flex items-center">
                 <svg className="w-5 h-5 mr-2 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
-                ACTIFS NUMÉRIQUES
+                MES PORTEFEUILLES
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {wallets.map((wallet) => {
@@ -558,7 +558,7 @@ const Dashboard: React.FC = () => {
                   onClick={handleTransaction}
                   className="w-full mt-6 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-cyan-900/20 transition-all border border-cyan-400/20"
                 >
-                  EXÉCUTER L'ORDRE
+                  VALIDER
                 </button>
               </div>
             </div>
@@ -571,7 +571,7 @@ const Dashboard: React.FC = () => {
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-sm font-mono text-slate-500 flex items-center gap-2">
                   <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></span>
-                  MARKET_STREAM
+                  COURS DU MARCHÉ
                 </h3>
                 <span className="text-[10px] text-slate-600 border border-slate-800 px-2 py-1 rounded">COINGECKO API</span>
               </div>
