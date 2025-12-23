@@ -26,8 +26,8 @@ public class UserHttpActeur extends Acteur<Object> {
     private final Gson gson;
     private HttpReceiver httpReceiver;
 
-    public UserHttpActeur(UserService userService, String jwtSecret, long jwtExpiration) {
-        super("UserHttpActeur");
+    public UserHttpActeur(UserService userService, String jwtSecret, long jwtExpiration, String jdbcUrl, String dbUser, String dbPassword) {
+        super("UserHttpActeur", true, jdbcUrl, dbUser, dbPassword);
         this.userService = userService;
         this.jwtValidator = new ActeurJwtValidator("JwtValidator", jwtSecret, jwtExpiration);
         this.gson = new Gson();

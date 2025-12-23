@@ -20,8 +20,12 @@ public class TransferAgent extends Acteur<TransferMessage> {
     @Value("${wallet.service.url}")
     private String walletServiceUrl;
 
-    public TransferAgent() {
-        super("TransferAgent");
+    @Autowired
+    public TransferAgent(
+            @Value("${spring.datasource.url}") String jdbcUrl,
+            @Value("${spring.datasource.username}") String dbUser,
+            @Value("${spring.datasource.password}") String dbPassword) {
+        super("TransferAgent", true, jdbcUrl, dbUser, dbPassword);
     }
 
     @PostConstruct

@@ -11,17 +11,26 @@ import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
 
+import com.example.transactions.service.CryptoPriceService;
+
 @Component
 public class BuyAgent extends Acteur<BuyMessage> {
 
     @Autowired
     private CreateBlockchainAgent createBlockchainAgent;
 
+    @Autowired
+    private CryptoPriceService cryptoPriceService;
+
     @Value("${wallet.service.url}")
     private String walletServiceUrl;
 
-    public BuyAgent() {
-        super("BuyAgent");
+    @Autowired
+    public BuyAgent(
+            @Value("${spring.datasource.url}") String jdbcUrl,
+            @Value("${spring.datasource.username}") String dbUser,
+            @Value("${spring.datasource.password}") String dbPassword) {
+        super("BuyAgent", true, jdbcUrl, dbUser, dbPassword);
     }
 
     @PostConstruct
@@ -42,8 +51,8 @@ public class BuyAgent extends Acteur<BuyMessage> {
         log("Traitement achat crypto: " + message.getCryptoUnit() + " pour utilisateur " + message.getUserId());
 
         try {
-            // Prix simulé pour la démo (en production, appeler un service de prix)
-            double prixUnitaire = getPrixCrypto(message.getCryptoUnit().name());
+            // Utilisation du service de prix réel
+            double prixUnitaire = cryptoPriceService.getPrice(message.getCryptoUnit().name(), message.getPaymentUnit().name());
             double montantAPayer = message.getAmount() * prixUnitaire;
 
             log("Prix unitaire " + message.getCryptoUnit() + ": " + prixUnitaire + " " + message.getPaymentUnit());
@@ -131,17 +140,6 @@ public class BuyAgent extends Acteur<BuyMessage> {
         } catch (Exception e) {
             logErreur("Erreur lors de l'achat de crypto", e);
         }
-    }
-
-    /**
-     * Prix simulés pour la démo (en production, utiliser une API de prix réelle)
-     */
-    private double getPrixCrypto(String cryptoUnit) {
-        return switch (cryptoUnit) {
-            case "BTC" -> 40000.0;  // 1 BTC = 40000 EUR/USD
-            case "ETH" -> 2500.0;   // 1 ETH = 2500 EUR/USD
-            default -> 1.0;
-        };
     }
 
     /**

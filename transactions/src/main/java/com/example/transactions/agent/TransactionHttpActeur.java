@@ -8,23 +8,56 @@ import com.example.transactions.model.CryptoUnit;
 import com.google.gson.Gson;
 import com.sun.net.httpserver.HttpExchange;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.OutputStream;
 
+import com.example.transactions.service.DatabaseService;
+import com.example.transactions.service.CryptoPriceService;
+import com.example.transactions.model.Transaction;
+import java.util.List;
+import java.util.Map;
+
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSerializer;
+import com.google.gson.JsonDeserializer;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 @Component
 public class TransactionHttpActeur extends Acteur<Object> {
 
     private final SupervisorAgent supervisorAgent;
+    private final DatabaseService databaseService;
+    private final CryptoPriceService cryptoPriceService;
     private final Gson gson;
     private HttpReceiver httpReceiver;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Autowired
-    public TransactionHttpActeur(SupervisorAgent supervisorAgent) {
-        super("TransactionHttpActeur");
+    public TransactionHttpActeur(
+            SupervisorAgent supervisorAgent,
+            DatabaseService databaseService,
+            CryptoPriceService cryptoPriceService,
+            @Value("${spring.datasource.url}") String jdbcUrl,
+            @Value("${spring.datasource.username}") String dbUser,
+            @Value("${spring.datasource.password}") String dbPassword
+    ) {
+        super("TransactionHttpActeur", true, jdbcUrl, dbUser, dbPassword);
         this.supervisorAgent = supervisorAgent;
-        this.gson = new Gson();
+        this.databaseService = databaseService;
+        this.cryptoPriceService = cryptoPriceService;
+        this.gson = new GsonBuilder()
+                .setPrettyPrinting()
+                .registerTypeAdapter(LocalDateTime.class,
+                        (JsonSerializer<LocalDateTime>) (src, typeOfSrc, context) ->
+                                context.serialize(src.format(FORMATTER)))
+                .registerTypeAdapter(LocalDateTime.class,
+                        (JsonDeserializer<LocalDateTime>) (json, typeOfT, context) ->
+                                LocalDateTime.parse(json.getAsString(), FORMATTER))
+                .create();
     }
 
     public void startHttpServer(int port) {
@@ -55,6 +88,18 @@ public class TransactionHttpActeur extends Acteur<Object> {
                     handleTransfer(exchange, body);
                     return;
                 }
+            } else if ("GET".equals(method)) {
+                if (path.startsWith("/transactions/history/")) {
+                    String[] parts = path.split("/");
+                    if (parts.length == 4) {
+                        Long userId = Long.parseLong(parts[3]);
+                        handleGetHistory(exchange, userId);
+                        return;
+                    }
+                } else if ("/transactions/prices".equals(path)) {
+                    handleGetPrices(exchange);
+                    return;
+                }
             }
 
             sendError(exchange, 404, "Not found");
@@ -62,6 +107,26 @@ public class TransactionHttpActeur extends Acteur<Object> {
         } catch (Exception e) {
             logErreur("💥 Erreur traitement requête HTTP", e);
             sendError(exchange, 500, "Internal server error: " + e.getMessage());
+        }
+    }
+
+    private void handleGetPrices(HttpExchange exchange) {
+        try {
+            Map<String, Double> prices = cryptoPriceService.getAllPrices();
+            sendJson(exchange, 200, prices);
+        } catch (Exception e) {
+            logErreur("❌ Erreur handleGetPrices", e);
+            sendError(exchange, 500, "Error fetching prices: " + e.getMessage());
+        }
+    }
+
+    private void handleGetHistory(HttpExchange exchange, Long userId) {
+        try {
+            List<Transaction> transactions = databaseService.findUserTransactions(userId);
+            sendJson(exchange, 200, transactions);
+        } catch (Exception e) {
+            logErreur("❌ Erreur handleGetHistory", e);
+            sendError(exchange, 500, "Error fetching history: " + e.getMessage());
         }
     }
 

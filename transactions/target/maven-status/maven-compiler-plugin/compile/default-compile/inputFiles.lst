@@ -16,4 +16,5 @@
 /home/adamt/gitstore/CyPay/transactions/src/main/java/com/example/transactions/model/TransactionStatus.java
 /home/adamt/gitstore/CyPay/transactions/src/main/java/com/example/transactions/model/TransactionType.java
 /home/adamt/gitstore/CyPay/transactions/src/main/java/com/example/transactions/repository/TransactionRepository.java
+/home/adamt/gitstore/CyPay/transactions/src/main/java/com/example/transactions/service/CryptoPriceService.java
 /home/adamt/gitstore/CyPay/transactions/src/main/java/com/example/transactions/service/DatabaseService.java

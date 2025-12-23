@@ -21,8 +21,8 @@ public class WalletHttpActeur extends Acteur<Object> {
     private final Gson gson;
     private HttpReceiver httpReceiver;
 
-    public WalletHttpActeur(WalletService walletService, String jwtSecret, long jwtExpiration) {
-        super("WalletHttpActeur");
+    public WalletHttpActeur(WalletService walletService, String jwtSecret, long jwtExpiration, String jdbcUrl, String dbUser, String dbPassword) {
+        super("WalletHttpActeur", true, jdbcUrl, dbUser, dbPassword);
         this.walletService = walletService;
         this.jwtValidator = new ActeurJwtValidator("JwtValidator", jwtSecret, jwtExpiration);
         this.gson = new Gson();
@@ -70,9 +70,14 @@ public class WalletHttpActeur extends Acteur<Object> {
                         return;
                     }
 
-                    if (parts.length == 4 && "GET".equals(method)) {
-                        handleGetWalletsByUser(exchange, userId);
-                        return;
+                    if (parts.length == 4) {
+                        if ("GET".equals(method)) {
+                            handleGetWalletsByUser(exchange, userId);
+                            return;
+                        } else if ("DELETE".equals(method)) {
+                            handleDeleteWallet(exchange, userId); // userId here is actually walletId in this context
+                            return;
+                        }
                     }
 
                     if (parts.length == 5) {
@@ -156,6 +161,15 @@ public class WalletHttpActeur extends Acteur<Object> {
         } catch (Exception e) {
             logErreur("❌ Erreur handleTransfer", e);
             sendError(exchange, 400, "Transfer failed: " + e.getMessage());
+        }
+    }
+
+    private void handleDeleteWallet(HttpExchange exchange, Long walletId) {
+        try {
+            walletService.deleteWallet(walletId);
+            sendJson(exchange, 200, new MessageResponse("Wallet deleted successfully"));
+        } catch (Exception e) {
+            sendError(exchange, 500, e.getMessage());
         }
     }
 

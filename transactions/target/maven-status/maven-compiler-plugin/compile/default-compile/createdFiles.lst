@@ -6,6 +6,8 @@ com/example/transactions/model/TransactionStatus.class
 com/example/transactions/model/CryptoUnit.class
 com/example/transactions/message/SellMessage.class
 com/example/transactions/agent/OrderAgent.class
+com/example/transactions/service/CryptoPriceService.class
+com/example/transactions/service/CryptoPriceService$1.class
 com/example/transactions/TransactionApplication.class
 com/example/transactions/agent/SupervisorAgent.class
 com/example/transactions/service/DatabaseService.class

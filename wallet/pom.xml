@@ -114,18 +114,6 @@
         </dependency>
 
         <!-- Tests -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Framework Acteurs CyPay -->
-        <dependency>
-            <groupId>com.cypay</groupId>
-            <artifactId>acteur-framework</artifactId>
-            <version>1.0.0</version>
-        </dependency>
     </dependencies>
 
     <build>

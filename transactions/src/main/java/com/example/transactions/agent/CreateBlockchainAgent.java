@@ -1,11 +1,13 @@
 package com.example.transactions.agent;
 
+import com.cypay.framework.acteur.ActeurLogger;
 import com.example.transactions.message.CreateBlockchainMessage;
 import com.example.transactions.model.Transaction;
 import com.example.transactions.model.TransactionStatus;
 import com.example.transactions.service.DatabaseService;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.BlockingQueue;
@@ -17,11 +19,20 @@ public class CreateBlockchainAgent implements Runnable {
     @Autowired
     private DatabaseService databaseService;
 
+    @Value("${spring.datasource.url}")
+    private String jdbcUrl;
+    @Value("${spring.datasource.username}")
+    private String dbUser;
+    @Value("${spring.datasource.password}")
+    private String dbPassword;
+
+    private ActeurLogger logger;
     private final BlockingQueue<CreateBlockchainMessage> mailbox = new LinkedBlockingQueue<>();
     private Thread thread;
 
     @PostConstruct
     public void init() {
+        this.logger = new ActeurLogger("CreateBlockchainAgent", true, jdbcUrl, dbUser, dbPassword);
         thread = new Thread(this, "CreateBlockchainAgent");
         thread.start();
     }
@@ -31,13 +42,13 @@ public class CreateBlockchainAgent implements Runnable {
             mailbox.put(message);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.err.println("Erreur lors de l'envoi du message: " + e.getMessage());
+            if (logger != null) logger.erreur("Erreur lors de l'envoi du message", e);
         }
     }
 
     @Override
     public void run() {
-        System.out.println("CreateBlockchainAgent démarré");
+        logger.info("CreateBlockchainAgent démarré");
 
         while (!Thread.currentThread().isInterrupted()) {
             try {
@@ -45,13 +56,13 @@ public class CreateBlockchainAgent implements Runnable {
                 processMessage(message);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                System.err.println("CreateBlockchainAgent interrompu");
+                logger.erreur("CreateBlockchainAgent interrompu", e);
             }
         }
     }
 
     private void processMessage(CreateBlockchainMessage message) {
-        System.out.println("Création d'une transaction blockchain: " + message);
+        logger.info("Création d'une transaction blockchain: " + message);
 
         try {
             // Créer la transaction
@@ -67,11 +78,10 @@ public class CreateBlockchainAgent implements Runnable {
             // Sauvegarder dans la blockchain
             Transaction saved = databaseService.saveTransaction(transaction);
 
-            System.out.println("Transaction blockchain créée avec succès: ID=" + saved.getId());
+            logger.info("Transaction blockchain créée avec succès: ID=" + saved.getId());
 
         } catch (Exception e) {
-            System.err.println("Erreur lors de la création de la transaction blockchain: " + e.getMessage());
-            e.printStackTrace();
+            logger.erreur("Erreur lors de la création de la transaction blockchain", e);
         }
     }
 }

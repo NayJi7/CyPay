@@ -34,7 +34,10 @@ public class UserApplication {
             @Value("${actor.port:8082}") int port,
             @Value("${monitoring.port:9090}") int monitoringPort,
             @Value("${jwt.secret}") String jwtSecret,
-            @Value("${jwt.expiration}") long jwtExpiration
+            @Value("${jwt.expiration}") long jwtExpiration,
+            @Value("${spring.datasource.url}") String jdbcUrl,
+            @Value("${spring.datasource.username}") String dbUser,
+            @Value("${spring.datasource.password}") String dbPassword
     ) {
         return args -> {
             System.out.println("╔════════════════════════════════════════════════╗");
@@ -57,7 +60,7 @@ public class UserApplication {
 
             // ✅ 3. Créer et enregistrer l'acteur HTTP
             System.out.println("📋 Étape 3/5 : Création de l'acteur HTTP principal");
-            UserHttpActeur httpActeur = new UserHttpActeur(userService, jwtSecret, jwtExpiration);
+            UserHttpActeur httpActeur = new UserHttpActeur(userService, jwtSecret, jwtExpiration, jdbcUrl, dbUser, dbPassword);
             superviseur.enregistrerActeur("UserHttpActeur", httpActeur);
             System.out.println();
 

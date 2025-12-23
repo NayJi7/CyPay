@@ -11,17 +11,26 @@ import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
 
+import com.example.transactions.service.CryptoPriceService;
+
 @Component
 public class SellAgent extends Acteur<SellMessage> {
 
     @Autowired
     private CreateBlockchainAgent createBlockchainAgent;
 
+    @Autowired
+    private CryptoPriceService cryptoPriceService;
+
     @Value("${wallet.service.url}")
     private String walletServiceUrl;
 
-    public SellAgent() {
-        super("SellAgent");
+    @Autowired
+    public SellAgent(
+            @Value("${spring.datasource.url}") String jdbcUrl,
+            @Value("${spring.datasource.username}") String dbUser,
+            @Value("${spring.datasource.password}") String dbPassword) {
+        super("SellAgent", true, jdbcUrl, dbUser, dbPassword);
     }
 
     @PostConstruct
@@ -42,8 +51,8 @@ public class SellAgent extends Acteur<SellMessage> {
         log("Traitement vente crypto: " + message.getCryptoUnit() + " pour utilisateur " + message.getUserId());
 
         try {
-            // Prix simulé pour la démo
-            double prixUnitaire = getPrixCrypto(message.getCryptoUnit().name());
+            // Utilisation du service de prix réel
+            double prixUnitaire = cryptoPriceService.getPrice(message.getCryptoUnit().name(), message.getTargetUnit().name());
             double montantARecevoir = message.getAmount() * prixUnitaire;
 
             log("Prix unitaire " + message.getCryptoUnit() + ": " + prixUnitaire + " " + message.getTargetUnit());
@@ -130,17 +139,6 @@ public class SellAgent extends Acteur<SellMessage> {
         } catch (Exception e) {
             logErreur("Erreur lors de la vente de crypto", e);
         }
-    }
-
-    /**
-     * Prix simulés pour la démo (en production, utiliser une API de prix réelle)
-     */
-    private double getPrixCrypto(String cryptoUnit) {
-        return switch (cryptoUnit) {
-            case "BTC" -> 40000.0;  // 1 BTC = 40000 EUR/USD
-            case "ETH" -> 2500.0;   // 1 ETH = 2500 EUR/USD
-            default -> 1.0;
-        };
     }
 
     /**

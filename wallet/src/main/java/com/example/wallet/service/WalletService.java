@@ -31,26 +31,15 @@ public class WalletService {
         return walletRepository.findByUserIdAndCurrency(userId, currency)
                 .orElseGet(() -> {
                     Wallet newWallet = new Wallet(userId, currency);
-                    // 🎁 BONUS : 10 000 €/$ offerts à la création pour tester !
-                    if ("EUR".equalsIgnoreCase(currency) || "USD".equalsIgnoreCase(currency)) {
+                    
+                    // 🎁 BONUS : 10 000 €/$ offerts UNIQUEMENT à la création du PREMIER wallet !
+                    List<Wallet> userWallets = walletRepository.findByUserId(userId);
+                    if (userWallets.isEmpty() && ("EUR".equalsIgnoreCase(currency) || "USD".equalsIgnoreCase(currency))) {
                         newWallet.setBalance(new BigDecimal("10000.00"));
                     }
+                    
                     return walletRepository.save(newWallet);
                 });
-    }
-
-    @jakarta.annotation.PostConstruct
-    public void initDemoBalances() {
-        // 🎁 BONUS : Mettre à jour les comptes existants avec 10 000 €/$ si solde faible
-        List<Wallet> wallets = walletRepository.findAll();
-        for (Wallet w : wallets) {
-            if (("EUR".equalsIgnoreCase(w.getCurrency()) || "USD".equalsIgnoreCase(w.getCurrency()))
-                    && w.getBalance().compareTo(new BigDecimal("1000")) < 0) {
-                w.setBalance(new BigDecimal("10000.00"));
-                walletRepository.save(w);
-                System.out.println("💰 Wallet " + w.getId() + " (User " + w.getUserId() + ") crédité de 10 000 " + w.getCurrency());
-            }
-        }
     }
 
     public Wallet getWallet(Long userId, String currency) {
@@ -88,5 +77,12 @@ public class WalletService {
     public void transfer(Long fromUserId, Long toUserId, String currency, BigDecimal amount) {
         debit(fromUserId, currency, amount);
         credit(toUserId, currency, amount);
+    }
+
+    public void deleteWallet(Long walletId) {
+        if (!walletRepository.existsById(walletId)) {
+            throw new EntityNotFoundException("Wallet not found with ID: " + walletId);
+        }
+        walletRepository.deleteById(walletId);
     }
 }

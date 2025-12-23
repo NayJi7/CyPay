@@ -20,10 +20,14 @@ public abstract class Acteur<T> implements Runnable {
     protected Acteur<?> supervisor;
 
     public Acteur(String nom) {
+        this(nom, false, null, null, null);
+    }
+
+    public Acteur(String nom, boolean logToDb, String jdbcUrl, String dbUser, String dbPassword) {
         this.nom = nom;
         this.mailbox = new LinkedBlockingQueue<>();
         this.running = true;
-        this.logger = new ActeurLogger(nom);
+        this.logger = new ActeurLogger(nom, logToDb, jdbcUrl, dbUser, dbPassword);
         this.httpClient = new ActeurHttpClient(logger);
     }
 

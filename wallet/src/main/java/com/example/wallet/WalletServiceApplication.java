@@ -20,7 +20,10 @@ public class WalletServiceApplication {
             WalletService walletService,
             @Value("${actor.port:8083}") int port,
             @Value("${jwt.secret}") String jwtSecret,
-            @Value("${jwt.expiration}") long jwtExpiration
+            @Value("${jwt.expiration}") long jwtExpiration,
+            @Value("${spring.datasource.url}") String jdbcUrl,
+            @Value("${spring.datasource.username}") String dbUser,
+            @Value("${spring.datasource.password}") String dbPassword
     ) {
         return args -> {
             System.out.println("╔════════════════════════════════════════════════╗");
@@ -29,7 +32,7 @@ public class WalletServiceApplication {
             System.out.println();
 
             System.out.println("📋 Démarrage de l'acteur HTTP Wallet sur le port " + port);
-            WalletHttpActeur walletHttpActeur = new WalletHttpActeur(walletService, jwtSecret, jwtExpiration);
+            WalletHttpActeur walletHttpActeur = new WalletHttpActeur(walletService, jwtSecret, jwtExpiration, jdbcUrl, dbUser, dbPassword);
             walletHttpActeur.demarrer();
             walletHttpActeur.startHttpServer(port);
             System.out.println("✅ Acteur HTTP Wallet démarré et prêt à recevoir des requêtes");

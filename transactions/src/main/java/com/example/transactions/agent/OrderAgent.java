@@ -1,10 +1,12 @@
 package com.example.transactions.agent;
 
+import com.cypay.framework.acteur.ActeurLogger;
 import com.example.transactions.message.OrderMessage;
 import com.example.transactions.message.CreateBlockchainMessage;
 import com.example.transactions.model.TransactionType;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.BlockingQueue;
@@ -16,11 +18,20 @@ public class OrderAgent implements Runnable {
     @Autowired
     private CreateBlockchainAgent createBlockchainAgent;
 
+    @Value("${spring.datasource.url}")
+    private String jdbcUrl;
+    @Value("${spring.datasource.username}")
+    private String dbUser;
+    @Value("${spring.datasource.password}")
+    private String dbPassword;
+
+    private ActeurLogger logger;
     private final BlockingQueue<OrderMessage> mailbox = new LinkedBlockingQueue<>();
     private Thread thread;
 
     @PostConstruct
     public void init() {
+        this.logger = new ActeurLogger("OrderAgent", true, jdbcUrl, dbUser, dbPassword);
         thread = new Thread(this, "OrderAgent");
         thread.start();
     }
@@ -30,13 +41,13 @@ public class OrderAgent implements Runnable {
             mailbox.put(message);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.err.println("Erreur lors de l'envoi du message: " + e.getMessage());
+            if (logger != null) logger.erreur("Erreur lors de l'envoi du message", e);
         }
     }
 
     @Override
     public void run() {
-        System.out.println("OrderAgent démarré");
+        logger.info("OrderAgent démarré");
 
         while (!Thread.currentThread().isInterrupted()) {
             try {
@@ -44,13 +55,13 @@ public class OrderAgent implements Runnable {
                 processMessage(message);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                System.err.println("OrderAgent interrompu");
+                logger.erreur("OrderAgent interrompu", e);
             }
         }
     }
 
     private void processMessage(OrderMessage message) {
-        System.out.println("Ordre programmé: " + message);
+        logger.info("Ordre programmé: " + message);
 
         try {
             // TODO: Implémenter la logique d'ordre programmé
@@ -72,11 +83,10 @@ public class OrderAgent implements Runnable {
 
             createBlockchainAgent.send(blockchainMessage);
 
-            System.out.println("Ordre programmé enregistré avec succès (prix cible: " + message.getTargetPrice() + ")");
+            logger.info("Ordre programmé enregistré avec succès (prix cible: " + message.getTargetPrice() + ")");
 
         } catch (Exception e) {
-            System.err.println("Erreur lors du traitement de l'ordre: " + e.getMessage());
-            e.printStackTrace();
+            logger.erreur("Erreur lors du traitement de l'ordre", e);
         }
     }
 }
