@@ -34,8 +34,8 @@ public class LogHttpActeur extends Acteur<Object> {
         this.logger = new ActeurLogger(
                 "LogHttpActeur",
                 true,
-                "jdbc:postgresql://db.yldotyunksweuovyknzg.supabase.co:5432/postgres",
-                "postgres",
+                "jdbc:postgresql://aws-1-eu-north-1.pooler.supabase.com:5432/postgres",
+                "postgres.yldotyunksweuovyknzg",
                 "Cypay.Cytech"
         );
         this.databaseActeur = databaseActeur;

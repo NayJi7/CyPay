@@ -8,8 +8,8 @@ public class LogServiceMain {
     public static void main(String[] args) {
         int port = 8084;
         int monitoringPort = 9091;
-        String jdbcUrl = "jdbc:postgresql://db.yldotyunksweuovyknzg.supabase.co:5432/postgres";
-        String dbUser = "postgres";
+        String jdbcUrl = "jdbc:postgresql://aws-1-eu-north-1.pooler.supabase.com:5432/postgres";
+        String dbUser = "postgres.yldotyunksweuovyknzg";
         String dbPassword = "Cypay.Cytech";
 
         // Parser arguments

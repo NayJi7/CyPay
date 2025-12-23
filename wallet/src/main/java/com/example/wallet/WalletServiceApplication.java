@@ -18,7 +18,7 @@ public class WalletServiceApplication {
     @Bean
     public CommandLineRunner startActorSystem(
             WalletService walletService,
-            @Value("${server.port:8083}") int port,
+            @Value("${actor.port:8083}") int port,
             @Value("${jwt.secret}") String jwtSecret,
             @Value("${jwt.expiration}") long jwtExpiration
     ) {

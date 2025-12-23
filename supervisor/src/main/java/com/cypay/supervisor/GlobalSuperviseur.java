@@ -49,9 +49,16 @@ public class GlobalSuperviseur extends Acteur<Object> {
      * Enregistre un microservice à superviser
      */
     public void enregistrerMicroservice(String nom, String host, int port, int monitoringPort) {
-        MicroserviceInfo info = new MicroserviceInfo(nom, host, port, monitoringPort);
+        enregistrerMicroservice(nom, host, port, monitoringPort, "/health");
+    }
+
+    /**
+     * Enregistre un microservice à superviser avec un chemin de health check spécifique
+     */
+    public void enregistrerMicroservice(String nom, String host, int port, int monitoringPort, String healthPath) {
+        MicroserviceInfo info = new MicroserviceInfo(nom, host, port, monitoringPort, healthPath);
         microservices.put(nom, info);
-        log("📋 Microservice enregistré : " + nom + " (" + host + ":" + port + ")");
+        log("📋 Microservice enregistré : " + nom + " (" + host + ":" + port + ") path=" + healthPath);
     }
 
     /**
@@ -99,8 +106,8 @@ public class GlobalSuperviseur extends Acteur<Object> {
      */
     private boolean checkMicroserviceHealth(MicroserviceInfo info) {
         try {
-            // Appel HTTP GET vers /health du monitoring
-            String healthUrl = "http://" + info.getHost() + ":" + info.getMonitoringPort() + "/health";
+            // Appel HTTP GET vers le health check du monitoring
+            String healthUrl = "http://" + info.getHost() + ":" + info.getMonitoringPort() + info.getHealthPath();
 
             HttpResponse response = get(healthUrl);
 
@@ -241,6 +248,7 @@ public class GlobalSuperviseur extends Acteur<Object> {
         private final String host;
         private final int port;
         private final int monitoringPort;
+        private final String healthPath;
         private final long startTime;
 
         private boolean healthy;
@@ -248,11 +256,12 @@ public class GlobalSuperviseur extends Acteur<Object> {
         private int totalChecks;
         private LocalDateTime lastCheckTime;
 
-        public MicroserviceInfo(String name, String host, int port, int monitoringPort) {
+        public MicroserviceInfo(String name, String host, int port, int monitoringPort, String healthPath) {
             this.name = name;
             this.host = host;
             this.port = port;
             this.monitoringPort = monitoringPort;
+            this.healthPath = healthPath;
             this.startTime = System.currentTimeMillis();
             this.healthy = true;
             this.consecutiveFailures = 0;
@@ -277,6 +286,7 @@ public class GlobalSuperviseur extends Acteur<Object> {
         public String getHost() { return host; }
         public int getPort() { return port; }
         public int getMonitoringPort() { return monitoringPort; }
+        public String getHealthPath() { return healthPath; }
         public boolean isHealthy() { return healthy; }
         public int getConsecutiveFailures() { return consecutiveFailures; }
         public int getTotalChecks() { return totalChecks; }

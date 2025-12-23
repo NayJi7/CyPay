@@ -1,11 +1,16 @@
+package com.example.user;
+
+import org.junit.jupiter.api.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class TestConnection {
-    public static void main(String[] args) {
-        String url = "jdbc:postgresql://db.yldotyunksweuovyknzg.supabase.co:5432/postgres?sslmode=require";
-        String user = "postgres";
+
+    @Test
+    public void testConnection() {
+        String url = "jdbc:postgresql://aws-1-eu-north-1.pooler.supabase.com:5432/postgres";
+        String user = "postgres.yldotyunksweuovyknzg";
         String password = "Cypay.Cytech";
 
         try {
@@ -22,6 +27,7 @@ public class TestConnection {
             System.out.println("Version: " + conn.getMetaData().getDriverVersion());
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new RuntimeException("Connection failed", e);
         }
     }
 }

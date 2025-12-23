@@ -17,7 +17,7 @@ public class TransactionApplication {
     @Bean
     public CommandLineRunner startActorSystem(
             TransactionHttpActeur transactionHttpActeur,
-            @Value("${server.port:8081}") int port
+            @Value("${actor.port:8081}") int port
     ) {
         return args -> {
             System.out.println("╔════════════════════════════════════════════════╗");

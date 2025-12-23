@@ -1,4 +1,7 @@
 server:
+  port: 9093
+
+actor:
   port: 8083
 
 jwt:
@@ -12,13 +15,13 @@ user:
 
 spring:
   datasource:
-    url: jdbc:postgresql://db.yldotyunksweuovyknzg.supabase.co:5432/postgres?sslmode=require
-    username: postgres
+    url: jdbc:postgresql://aws-1-eu-north-1.pooler.supabase.com:5432/postgres
+    username: postgres.yldotyunksweuovyknzg
     password: Cypay.Cytech
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 30000
-      maximum-pool-size: 10
+      maximum-pool-size: 2
   jpa:
     hibernate:
       ddl-auto: update

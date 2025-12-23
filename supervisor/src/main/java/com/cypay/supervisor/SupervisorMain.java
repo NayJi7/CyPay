@@ -42,10 +42,10 @@ public class SupervisorMain {
         superviseur.enregistrerMicroservice("user-service", "localhost", 8082, 9090);
 
         // Microservice Transactions (port 8081)
-        superviseur.enregistrerMicroservice("transactions-service", "localhost", 8081, 9092);
+        superviseur.enregistrerMicroservice("transactions-service", "localhost", 8081, 9092, "/actuator/health");
 
         // Microservice Wallet (port 8083)
-        superviseur.enregistrerMicroservice("wallet-service", "localhost", 8083, 9093);
+        superviseur.enregistrerMicroservice("wallet-service", "localhost", 8083, 9093, "/actuator/health");
 
         System.out.println();
 

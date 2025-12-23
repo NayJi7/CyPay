@@ -31,7 +31,7 @@ public class UserApplication {
     public CommandLineRunner startActorSystem(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            @Value("${server.port:8082}") int port,
+            @Value("${actor.port:8082}") int port,
             @Value("${monitoring.port:9090}") int monitoringPort,
             @Value("${jwt.secret}") String jwtSecret,
             @Value("${jwt.expiration}") long jwtExpiration
