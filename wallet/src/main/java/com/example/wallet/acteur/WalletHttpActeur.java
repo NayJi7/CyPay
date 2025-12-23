@@ -50,6 +50,11 @@ public class WalletHttpActeur extends Acteur<Object> {
                 return;
             }
 
+            if (path.equals("/api/wallets/transfer") && "POST".equals(method)) {
+                handleTransfer(exchange, body);
+                return;
+            }
+
             if (path.startsWith("/api/wallets/")) {
                 String[] parts = path.split("/");
                 // /api/wallets/{userId} -> parts length 4: ["", "api", "wallets", "{userId}"]
@@ -143,6 +148,17 @@ public class WalletHttpActeur extends Acteur<Object> {
         }
     }
 
+    private void handleTransfer(HttpExchange exchange, String body) {
+        try {
+            TransferRequest request = gson.fromJson(body, TransferRequest.class);
+            walletService.transfer(request.fromUserId, request.toUserId, request.currency, request.amount);
+            sendJson(exchange, 200, new MessageResponse("Transfer successful"));
+        } catch (Exception e) {
+            logErreur("❌ Erreur handleTransfer", e);
+            sendError(exchange, 400, "Transfer failed: " + e.getMessage());
+        }
+    }
+
     private void sendJson(HttpExchange exchange, int statusCode, Object data) {
         try {
             String json = gson.toJson(data);
@@ -173,5 +189,17 @@ public class WalletHttpActeur extends Acteur<Object> {
     private static class ErrorResponse {
         String error;
         ErrorResponse(String error) { this.error = error; }
+    }
+
+    private static class MessageResponse {
+        String message;
+        MessageResponse(String message) { this.message = message; }
+    }
+
+    private static class TransferRequest {
+        public Long fromUserId;
+        public Long toUserId;
+        public String currency;
+        public java.math.BigDecimal amount;
     }
 }

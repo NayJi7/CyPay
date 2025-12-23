@@ -51,6 +51,9 @@ public class TransactionHttpActeur extends Acteur<Object> {
                 } else if ("/transactions/sell".equals(path)) {
                     handleSell(exchange, body);
                     return;
+                } else if ("/transactions/transfer".equals(path)) {
+                    handleTransfer(exchange, body);
+                    return;
                 }
             }
 
@@ -64,11 +67,20 @@ public class TransactionHttpActeur extends Acteur<Object> {
 
     private void handleBuy(HttpExchange exchange, String body) {
         try {
+            log("📥 Body reçu pour achat: " + body);
             BuyRequest request = gson.fromJson(body, BuyRequest.class);
+            
+            if (request.userId == null) {
+                log("❌ Erreur: userId est null dans la requête");
+                sendError(exchange, 400, "userId is required");
+                return;
+            }
+
             BuyMessage message = new BuyMessage(request.userId, request.cryptoUnit, request.amount, request.paymentUnit);
             supervisorAgent.dispatch(message);
             sendJson(exchange, 200, new MessageResponse("Achat de " + request.amount + " " + request.cryptoUnit + " pour l'utilisateur " + request.userId + " en cours..."));
         } catch (Exception e) {
+            logErreur("❌ Erreur handleBuy", e);
             sendError(exchange, 400, "Invalid request: " + e.getMessage());
         }
     }
@@ -79,6 +91,24 @@ public class TransactionHttpActeur extends Acteur<Object> {
             SellMessage message = new SellMessage(request.userId, request.cryptoUnit, request.amount, request.targetUnit);
             supervisorAgent.dispatch(message);
             sendJson(exchange, 200, new MessageResponse("Vente de " + request.amount + " " + request.cryptoUnit + " pour l'utilisateur " + request.userId + " en cours..."));
+        } catch (Exception e) {
+            sendError(exchange, 400, "Invalid request: " + e.getMessage());
+        }
+    }
+
+    private void handleTransfer(HttpExchange exchange, String body) {
+        try {
+            TransferRequest request = gson.fromJson(body, TransferRequest.class);
+            // Note: TransferMessage expects (fromUserId, toUserId, amount, cryptoUnit)
+            // But TransferRequest might have different field names. Let's define TransferRequest first.
+            com.example.transactions.message.TransferMessage message = new com.example.transactions.message.TransferMessage(
+                    request.fromUserId,
+                    request.toUserId,
+                    request.cryptoUnit,
+                    request.amount
+            );
+            supervisorAgent.dispatch(message);
+            sendJson(exchange, 200, new MessageResponse("Virement de " + request.amount + " " + request.cryptoUnit + " de " + request.fromUserId + " vers " + request.toUserId + " en cours..."));
         } catch (Exception e) {
             sendError(exchange, 400, "Invalid request: " + e.getMessage());
         }
@@ -112,17 +142,24 @@ public class TransactionHttpActeur extends Acteur<Object> {
     }
 
     private static class BuyRequest {
-        Long userId;
-        CryptoUnit cryptoUnit;
-        Double amount;
-        CryptoUnit paymentUnit;
+        public Long userId;
+        public CryptoUnit cryptoUnit;
+        public Double amount;
+        public CryptoUnit paymentUnit;
     }
 
     private static class SellRequest {
-        Long userId;
-        CryptoUnit cryptoUnit;
-        Double amount;
-        CryptoUnit targetUnit;
+        public Long userId;
+        public CryptoUnit cryptoUnit;
+        public Double amount;
+        public CryptoUnit targetUnit;
+    }
+
+    private static class TransferRequest {
+        public Long fromUserId;
+        public Long toUserId;
+        public CryptoUnit cryptoUnit;
+        public Double amount;
     }
 
     private static class MessageResponse {

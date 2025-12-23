@@ -1,83 +1,75 @@
 package com.example.transactions.agent;
 
+import com.cypay.framework.acteur.Acteur;
+import com.cypay.framework.http.HttpResponse;
 import com.example.transactions.message.TransferMessage;
 import com.example.transactions.message.CreateBlockchainMessage;
 import com.example.transactions.model.TransactionType;
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import jakarta.annotation.PostConstruct;
 
 @Component
-public class TransferAgent implements Runnable {
+public class TransferAgent extends Acteur<TransferMessage> {
 
     @Autowired
     private CreateBlockchainAgent createBlockchainAgent;
 
-    private final BlockingQueue<TransferMessage> mailbox = new LinkedBlockingQueue<>();
-    private Thread thread;
+    @Value("${wallet.service.url}")
+    private String walletServiceUrl;
+
+    public TransferAgent() {
+        super("TransferAgent");
+    }
 
     @PostConstruct
     public void init() {
-        thread = new Thread(this, "TransferAgent");
-        thread.start();
+        demarrer();
+        log("Agent initialisé avec Wallet URL: " + walletServiceUrl);
     }
 
+    /**
+     * Méthode publique pour envoyer un message à cet agent (compatible avec SupervisorAgent)
+     */
     public void send(TransferMessage message) {
-        try {
-            mailbox.put(message);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            System.err.println("Erreur lors de l'envoi du message: " + e.getMessage());
-        }
+        envoyer(new com.cypay.framework.acteur.Message<>("SupervisorAgent", message));
     }
 
     @Override
-    public void run() {
-        System.out.println("TransferAgent démarré");
-
-        while (!Thread.currentThread().isInterrupted()) {
-            try {
-                TransferMessage message = mailbox.take();
-                processMessage(message);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                System.err.println("TransferAgent interrompu");
-            }
-        }
-    }
-
-    private void processMessage(TransferMessage message) {
-        System.out.println("Virement de crypto: " + message);
+    protected void traiterMessage(TransferMessage message) {
+        log("Traitement virement crypto: " + message.getAmount() + " " + message.getCryptoUnit() + 
+            " de " + message.getFromUserId() + " vers " + message.getToUserId());
 
         try {
             // Validation de base
             if (message.getFromUserId().equals(message.getToUserId())) {
-                System.err.println("Impossible de faire un virement vers soi-même");
+                log("Erreur: Impossible de faire un virement vers soi-même");
                 return;
             }
 
-            // TODO: Quand Wallet sera créé, décommenter:
-            // 1. Vérifier que l'expéditeur a assez de crypto
-            // GET http://localhost:8082/wallets/{fromUserId}/balance/{cryptoUnit}
-            // boolean hasBalance = walletClient.hasBalance(message.getFromUserId(), message.getCryptoUnit(), message.getAmount());
-            // if (!hasBalance) {
-            //     System.err.println("Solde crypto insuffisant pour le virement");
-            //     return;
-            // }
+            // 1. Effectuer le virement via le Wallet Service
+            String transferUrl = walletServiceUrl + "/api/wallets/transfer";
+            
+            String transferBody = String.format(
+                    "{\"fromUserId\":%d,\"toUserId\":%d,\"currency\":\"%s\",\"amount\":%.8f}",
+                    message.getFromUserId(),
+                    message.getToUserId(),
+                    message.getCryptoUnit().name(),
+                    message.getAmount()
+            );
 
-            // 2. Effectuer le virement (débit + crédit atomique)
-            // POST http://localhost:8082/wallets/transfer
-            // Body: { "fromUserId": ..., "toUserId": ..., "unit": "BTC", "amount": ... }
-            // boolean success = walletClient.transfer(message.getFromUserId(), message.getToUserId(), message.getCryptoUnit(), message.getAmount());
-            // if (!success) {
-            //     System.err.println("Échec du virement");
-            //     return;
-            // }
+            HttpResponse response = post(transferUrl, transferBody);
 
-            // Pour l'instant, on enregistre juste la transaction
+            if (response.getStatusCode() != 200) {
+                log("Erreur lors du virement: " + response.getBody());
+                return;
+            }
+
+            log("Virement effectué avec succès dans le Wallet Service");
+
+            // 2. Enregistrer dans la blockchain
             CreateBlockchainMessage blockchainMessage = new CreateBlockchainMessage(
                     TransactionType.TRANSFER,
                     message.getFromUserId(),
@@ -88,11 +80,10 @@ public class TransferAgent implements Runnable {
 
             createBlockchainAgent.send(blockchainMessage);
 
-            System.out.println("Virement de crypto enregistré avec succès");
+            log("✓ Transaction enregistrée dans la blockchain");
 
         } catch (Exception e) {
-            System.err.println("Erreur lors du virement de crypto: " + e.getMessage());
-            e.printStackTrace();
+            logErreur("Erreur lors du virement de crypto", e);
         }
     }
 }
