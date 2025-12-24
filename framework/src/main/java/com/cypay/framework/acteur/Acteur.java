@@ -113,29 +113,23 @@ public abstract class Acteur<T> implements Runnable {
             try {
                 Message<T> message = mailbox.take();
                 traiterMessage(message.getContenu());
-
             } catch (InterruptedException e) {
-                logger.erreur("Thread interrompu", e);
+                logger.erreur("[ERROR] Thread interrompu", e);
                 Thread.currentThread().interrupt();
                 break;
-
             } catch (Exception e) {
-                // ✅ AJOUT : Log l'erreur
-                logger.erreur("Erreur lors du traitement du message", e);
-
-                // ✅ AJOUT : Notifier le superviseur si présent
+                logger.erreur("[ERROR] Erreur lors du traitement du message", e);
                 if (supervisor != null) {
                     try {
                         notifierSuperviseur(e);
+                        logger.info("[NOTIFY] Superviseur notifié de l'erreur");
                     } catch (Exception notifyError) {
-                        logger.erreur("Impossible de notifier le superviseur", notifyError);
+                        logger.erreur("[ERROR] Impossible de notifier le superviseur", notifyError);
                     }
                 }
-
-                // ✅ L'acteur continue de fonctionner (ne crash pas)
             }
         }
-        logger.info("Acteur arrêté");
+        logger.info("[STOP] Acteur arrêté");
     }
 
     /**
@@ -146,24 +140,18 @@ public abstract class Acteur<T> implements Runnable {
             // Créer dynamiquement un message ActorFailed via réflexion
             Class<?> messagesClass = Class.forName("com.cypay.logs.acteur.Messages");
             Class<?>[] innerClasses = messagesClass.getDeclaredClasses();
-
             for (Class<?> innerClass : innerClasses) {
                 if (innerClass.getSimpleName().equals("ActorFailed")) {
-                    // Créer une instance de ActorFailed(actorName, error, timestamp)
                     Object failureMessage = innerClass
                             .getDeclaredConstructors()[0]
                             .newInstance(this.nom, e, System.currentTimeMillis());
-
-                    // Envoyer au superviseur
                     Message<?> message = new Message<>(this.nom, failureMessage);
                     supervisor.envoyer((Message) message);
-
-                    logger.info("💥 Superviseur notifié de l'erreur");
                     return;
                 }
             }
         } catch (Exception reflectionError) {
-            logger.erreur("Erreur lors de la notification du superviseur", reflectionError);
+            logger.erreur("[ERROR] Erreur lors de la notification du superviseur", reflectionError);
         }
     }
 
@@ -197,7 +185,7 @@ public abstract class Acteur<T> implements Runnable {
     public HttpResponse sendHttp(int port, String path, HttpMethode method, String body) {
         String url = "http://localhost:" + port + path;
 
-        log("Envoi HTTP " + method + " vers " + url);
+        log("[HTTP-OUT] " + method + " -> " + url);
 
         CustomHttpRequest request = CustomHttpRequest.builder()
                 .url(url)
@@ -240,7 +228,7 @@ public abstract class Acteur<T> implements Runnable {
 
         String url = buildUrl(host, port, path);
 
-        log("📤 Envoi vers " + host + ":" + port + " " + method + " " + path);
+        log("[OUT] -> " + host + ":" + port + " " + method + " " + path);
 
         HttpResponse response;
 
@@ -250,13 +238,13 @@ public abstract class Acteur<T> implements Runnable {
             case PUT -> response = put(url, jsonBody);
             case DELETE -> response = delete(url);
             case PATCH -> response = patch(url, jsonBody);
-            default -> throw new IllegalArgumentException("Méthode non supportée : " + method);
+            default -> throw new IllegalArgumentException("Method not supported: " + method);
         }
 
         if (response.isSuccess()) {
-            log("✅ Réponse reçue : " + response.getStatusCode());
+            log("[RESP] [SUCCESS] " + response.getStatusCode());
         } else {
-            log("⚠️ Erreur : " + response.getStatusCode());
+            log("[RESP] [ERROR] " + response.getStatusCode());
         }
 
         return response;
@@ -297,7 +285,7 @@ public abstract class Acteur<T> implements Runnable {
 
         String path = "/acteur/" + acteurName + "/message";
 
-        log("📨 Envoi message vers acteur distant : " + acteurName);
+        log("[MSG-OUT] -> Remote Actor: " + acteurName);
 
         return sendToService(host, port, path, HttpMethode.POST, messageJson);
     }
@@ -418,7 +406,7 @@ public abstract class Acteur<T> implements Runnable {
 
         } catch (Exception e) {
             // Fallback : toString() ou format simple
-            log("⚠️ Gson non disponible, utilisation de toString()");
+            log("[WARN] Gson not available, using toString()");
             return String.format("{\"data\": \"%s\"}", obj.toString());
         }
     }
@@ -432,10 +420,10 @@ public abstract class Acteur<T> implements Runnable {
      */
     protected boolean isResponseSuccess(HttpResponse response, String operationName) {
         if (response.isSuccess()) {
-            log("✅ " + operationName + " : succès (" + response.getStatusCode() + ")");
+            log("[SUCCESS] " + operationName + " : (" + response.getStatusCode() + ")");
             return true;
         } else {
-            log("❌ " + operationName + " : échec (" + response.getStatusCode() + ")");
+            log("[FAILURE] " + operationName + " : (" + response.getStatusCode() + ")");
             log("   Body: " + response.getBody());
             return false;
         }
@@ -455,7 +443,7 @@ public abstract class Acteur<T> implements Runnable {
                 return m.group(1);
             }
         } catch (Exception e) {
-            log("⚠️ Erreur extraction JSON : " + fieldName);
+            log("[WARN] JSON extraction error : " + fieldName);
         }
         return null;
     }
@@ -475,7 +463,7 @@ public abstract class Acteur<T> implements Runnable {
             HttpResponse response = getFromService(host, port, healthPath);
             return response.isSuccess();
         } catch (Exception e) {
-            log("⚠️ Service " + host + ":" + port + " non disponible");
+            log("[WARN] Service " + host + ":" + port + " unavailable");
             return false;
         }
     }
@@ -497,7 +485,7 @@ public abstract class Acteur<T> implements Runnable {
                     return response;
                 }
 
-                log("⚠️ Tentative " + attempt + "/" + maxRetries + " échouée");
+                log("[WARN] Attempt " + attempt + "/" + maxRetries + " failed");
 
                 if (attempt < maxRetries) {
                     long delay = (long) Math.pow(2, attempt - 1) * 1000; // Backoff exponentiel
@@ -518,7 +506,7 @@ public abstract class Acteur<T> implements Runnable {
             }
         }
 
-        logErreur("❌ Échec après " + maxRetries + " tentatives",
+        logErreur("[FAILURE] Max retries exceeded (" + maxRetries + ")",
                 new Exception("Max retries exceeded"));
 
         return response;
@@ -570,7 +558,7 @@ public abstract class Acteur<T> implements Runnable {
                 k -> new CircuitBreaker());
 
         if (breaker.isOpen()) {
-            log("⚠️ Circuit breaker OUVERT pour " + serviceKey);
+            log("[WARN] Circuit breaker OPEN for " + serviceKey);
             // Retourner une erreur 503
             return new HttpResponse(503, "{\"error\": \"Service unavailable (circuit open)\"}",
                     java.util.Map.of());

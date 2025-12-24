@@ -31,31 +31,26 @@ public class TransferAgent extends Acteur<TransferMessage> {
     @PostConstruct
     public void init() {
         demarrer();
-        log("Agent initialisé avec Wallet URL: " + walletServiceUrl);
+        logger.info("[INIT] TransferAgent démarré avec Wallet URL: " + walletServiceUrl);
     }
 
     /**
      * Méthode publique pour envoyer un message à cet agent (compatible avec SupervisorAgent)
      */
     public void send(TransferMessage message) {
+        logger.info("[SEND] Reçu une demande de transfert de " + message.getAmount() + " " + message.getCryptoUnit() + " de " + message.getFromUserId() + " vers " + message.getToUserId() + " (origine: SupervisorAgent)");
         envoyer(new com.cypay.framework.acteur.Message<>("SupervisorAgent", message));
     }
 
     @Override
     protected void traiterMessage(TransferMessage message) {
-        log("Traitement virement crypto: " + message.getAmount() + " " + message.getCryptoUnit() + 
-            " de " + message.getFromUserId() + " vers " + message.getToUserId());
-
+        logger.info("[PROCESS] Transfert de " + message.getAmount() + " " + message.getCryptoUnit() + " de " + message.getFromUserId() + " vers " + message.getToUserId());
         try {
-            // Validation de base
             if (message.getFromUserId().equals(message.getToUserId())) {
-                log("Erreur: Impossible de faire un virement vers soi-même");
+                logger.erreur("[ERROR] Auto-transfert interdit", null);
                 return;
             }
-
-            // 1. Effectuer le virement via le Wallet Service
             String transferUrl = walletServiceUrl + "/api/wallets/transfer";
-            
             String transferBody = String.format(
                     "{\"fromUserId\":%d,\"toUserId\":%d,\"currency\":\"%s\",\"amount\":%.8f}",
                     message.getFromUserId(),
@@ -63,17 +58,13 @@ public class TransferAgent extends Acteur<TransferMessage> {
                     message.getCryptoUnit().name(),
                     message.getAmount()
             );
-
             HttpResponse response = post(transferUrl, transferBody);
-
             if (response.getStatusCode() != 200) {
-                log("Erreur lors du virement: " + response.getBody());
+                logger.erreur("[ERROR] Echec du transfert: " + response.getBody(), null);
                 return;
             }
-
-            log("Virement effectué avec succès dans le Wallet Service");
-
-            // 2. Enregistrer dans la blockchain
+            logger.info("[SUCCESS] Transfert Wallet Service effectué");
+            logger.info("[BLOCKCHAIN] Enregistrement du transfert dans la blockchain (appel CreateBlockchainAgent)");
             CreateBlockchainMessage blockchainMessage = new CreateBlockchainMessage(
                     TransactionType.TRANSFER,
                     message.getFromUserId(),
@@ -81,13 +72,10 @@ public class TransferAgent extends Acteur<TransferMessage> {
                     message.getAmount(),
                     message.getCryptoUnit()
             );
-
             createBlockchainAgent.send(blockchainMessage);
-
-            log("✓ Transaction enregistrée dans la blockchain");
-
+            logger.info("[SUCCESS] Transaction blockchain enregistrée");
         } catch (Exception e) {
-            logErreur("Erreur lors du virement de crypto", e);
+            logger.erreur("[ERROR] Erreur lors du transfert", e);
         }
     }
 }

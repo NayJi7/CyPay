@@ -1,11 +1,15 @@
 package com.example.transactions.agent;
 
 import com.example.transactions.message.*;
+
+import com.cypay.framework.acteur.ActeurLogger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
+
 public class SupervisorAgent {
+    private final ActeurLogger logger = new ActeurLogger("SupervisorAgent");
 
     @Autowired
     private BuyAgent buyAgent;
@@ -27,22 +31,22 @@ public class SupervisorAgent {
      */
     public void dispatch(Object message) {
         if (message instanceof BuyMessage msg) {
-            System.out.println("SupervisorAgent: Routing BuyMessage to BuyAgent");
+            logger.info("[ROUTING] Acheminement vers BuyAgent");
             buyAgent.send(msg);
         } else if (message instanceof SellMessage msg) {
-            System.out.println("SupervisorAgent: Routing SellMessage to SellAgent");
+            logger.info("[ROUTING] Acheminement vers SellAgent");
             sellAgent.send(msg);
         } else if (message instanceof TransferMessage msg) {
-            System.out.println("SupervisorAgent: Routing TransferMessage to TransferAgent");
+            logger.info("[ROUTING] Acheminement vers TransferAgent");
             transferAgent.send(msg);
         } else if (message instanceof OrderMessage msg) {
-            System.out.println("SupervisorAgent: Routing OrderMessage to OrderAgent");
+            logger.info("[ROUTING] Acheminement vers OrderAgent");
             orderAgent.send(msg);
         } else if (message instanceof CreateBlockchainMessage msg) {
-            System.out.println("SupervisorAgent: Routing CreateBlockchainMessage to CreateBlockchainAgent");
+            logger.info("[ROUTING] Acheminement vers CreateBlockchainAgent");
             createBlockchainAgent.send(msg);
         } else {
-            System.err.println("SupervisorAgent: Unknown message type: " + message.getClass().getName());
+            logger.erreur("[WARN] Type de message inconnu: " + message.getClass().getName(), null);
         }
     }
 }

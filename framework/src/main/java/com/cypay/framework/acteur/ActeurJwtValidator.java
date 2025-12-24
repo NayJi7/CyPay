@@ -24,13 +24,13 @@ public class ActeurJwtValidator {
         try {
             boolean isValid = jwtValidator.validateToken(token);
             if (isValid) {
-                logger.info("✅ Token validé avec succès");
+                logger.info("[SUCCESS] Token validé avec succès");
             } else {
-                logger.erreur("❌ Token invalide ou expiré", new Exception("Token invalide"));
+                logger.erreur("[ERROR] Token invalide ou expiré", new Exception("Token invalide"));
             }
             return isValid;
         } catch (Exception e) {
-            logger.erreur("💥 Erreur lors de la validation du token", e);
+            logger.erreur("[ERROR] Erreur lors de la validation du token", e);
             return false;
         }
     }
@@ -41,10 +41,10 @@ public class ActeurJwtValidator {
     public String extraireEmail(String token) {
         try {
             String email = jwtValidator.extractEmail(token);
-            logger.info("📧 Email extrait du token : " + email);
+            logger.info("[INFO] Email extrait du token : " + email);
             return email;
         } catch (Exception e) {
-            logger.erreur("💥 Erreur lors de l'extraction de l'email", e);
+            logger.erreur("[ERROR] Erreur lors de l'extraction de l'email", e);
             return null;
         }
     }
@@ -56,13 +56,13 @@ public class ActeurJwtValidator {
         try {
             boolean isValid = jwtValidator.validateTokenForUser(token, email);
             if (isValid) {
-                logger.info("✅ Token validé pour l'utilisateur : " + email);
+                logger.info("[SUCCESS] Token validé pour l'utilisateur : " + email);
             } else {
-                logger.erreur("❌ Token invalide pour l'utilisateur : " + email, new Exception("Token invalide"));
+                logger.erreur("[ERROR] Token invalide pour l'utilisateur : " + email, new Exception("Token invalide"));
             }
             return isValid;
         } catch (Exception e) {
-            logger.erreur("💥 Erreur lors de la validation du token pour l'utilisateur", e);
+            logger.erreur("[ERROR] Erreur lors de la validation du token pour l'utilisateur", e);
             return false;
         }
     }
@@ -73,9 +73,9 @@ public class ActeurJwtValidator {
     public String extraireTokenDepuisHeader(String authorizationHeader) {
         String token = jwtValidator.extractTokenFromHeader(authorizationHeader);
         if (token != null) {
-            logger.info("🔑 Token extrait du header");
+            logger.info("[INFO] Token extrait du header");
         } else {
-            logger.erreur("❌ Aucun token trouvé dans le header", new Exception("Token absent"));
+            logger.erreur("[ERROR] Aucun token trouvé dans le header", new Exception("Token absent"));
         }
         return token;
     }
@@ -86,10 +86,10 @@ public class ActeurJwtValidator {
     public String genererToken(String email) {
         try {
             String token = jwtValidator.generateToken(email);
-            logger.info("🔐 Token généré pour : " + email);
+            logger.info("[SUCCESS] Token généré pour : " + email);
             return token;
         } catch (Exception e) {
-            logger.erreur("💥 Erreur lors de la génération du token", e);
+            logger.erreur("[ERROR] Erreur lors de la génération du token", e);
             return null;
         }
     }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 // -- TYPES --
 interface Wallet {
@@ -25,6 +26,34 @@ interface MarketData {
   bitcoin: { eur: number; usd: number; eur_24h_change: number };
   ethereum: { eur: number; usd: number; eur_24h_change: number };
 }
+
+// Configuration SweetAlert2 Theme
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  background: '#1e293b',
+  color: '#e2e8f0',
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+});
+
+const swalDark = Swal.mixin({
+  background: '#0f172a',
+  color: '#e2e8f0',
+  confirmButtonColor: '#06b6d4',
+  cancelButtonColor: '#ef4444',
+  buttonsStyling: true,
+  customClass: {
+    popup: 'border border-slate-700 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)]',
+    title: 'font-bold text-xl',
+    htmlContainer: 'text-slate-400'
+  }
+});
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -52,11 +81,79 @@ const Dashboard: React.FC = () => {
     type: 'BUY' as 'BUY' | 'SELL' | 'TRANSFER',
   });
 
+  // NOUVEAU: État pour le montant en Fiat (synchro avec montant crypto)
+  const [fiatAmount, setFiatAmount] = useState('');
+  
+  // NOUVEAU: Préférence d'affichage devise (EUR/USD)
+  const [preferredCurrency, setPreferredCurrency] = useState<'EUR' | 'USD'>('EUR');
+
   const [userProfile, setUserProfile] = useState({
     name: '',
     email: '',
     avatar: ''
   });
+
+  // -- HELPERS --
+  const getCurrentPrice = (cryptoSym: string, fiatSym: string) => {
+    if (!cryptoSym) return 0;
+    
+    // 1. Essayer CoinGecko
+    if (marketData) {
+      const c = cryptoSym === 'BTC' ? 'bitcoin' : 'ethereum';
+      const f = fiatSym.toLowerCase();
+      // @ts-ignore
+      if (marketData[c] && marketData[c][f]) return marketData[c][f];
+    }
+
+    // 2. Fallback prix internes
+    const key = `${cryptoSym}_${fiatSym}`; // ex: BTC_EUR
+    if (prices[key]) return prices[key];
+
+    // 3. Fallback conversion via EUR
+    const cryptoEur = prices[cryptoSym] || prices[`${cryptoSym}_EUR`] || 0;
+    const fiatEur = fiatSym === 'EUR' ? 1 : (prices[fiatSym] || 0.92); // approx
+    if (fiatEur === 0) return 0;
+    
+    return cryptoEur / fiatEur;
+  };
+
+  const handleCryptoChange = (val: string) => {
+    setTransactionForm({ ...transactionForm, amount: val });
+    
+    if (!val || isNaN(parseFloat(val))) {
+      setFiatAmount('');
+      return;
+    }
+    
+    const price = getCurrentPrice(transactionForm.crypto, transactionForm.currency);
+    if (price > 0) {
+      const fiat = parseFloat(val) * price;
+      setFiatAmount(fiat.toFixed(2));
+    }
+  };
+
+  const handleFiatChange = (val: string) => {
+    setFiatAmount(val);
+
+    if (!val || isNaN(parseFloat(val))) {
+      setTransactionForm({ ...transactionForm, amount: '' });
+      return;
+    }
+
+    const price = getCurrentPrice(transactionForm.crypto, transactionForm.currency);
+    if (price > 0) {
+      const crypto = parseFloat(val) / price;
+      setTransactionForm({ ...transactionForm, amount: crypto.toFixed(8) });
+    }
+  };
+
+  // Met à jour les conversions si on change de devise ou de crypto
+  useEffect(() => {
+    if (transactionForm.amount && !fiatAmount) {
+       handleCryptoChange(transactionForm.amount);
+    }
+  }, [transactionForm.crypto, transactionForm.currency]);
+
 
   // -- LOGIC --
   useEffect(() => {
@@ -169,10 +266,20 @@ const Dashboard: React.FC = () => {
       });
       if (!response.ok) throw new Error('Erreur création wallet');
       
-      alert(`Wallet ${currency} créé avec succès !`);
+      swalDark.fire({
+        icon: 'success',
+        title: 'Wallet Créé',
+        text: `Votre portefeuille ${currency} est prêt !`,
+        timer: 2000,
+        showConfirmButton: false
+      });
       fetchWallets(userId);
     } catch (err: any) {
-      alert(err.message);
+      swalDark.fire({
+        icon: 'error',
+        title: 'Échec',
+        text: err.message
+      });
     }
   };
 
@@ -186,11 +293,18 @@ const Dashboard: React.FC = () => {
       const response = await fetch(`/api/wallets/${walletId}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('Erreur suppression wallet');
       
-      alert('Wallet supprimé avec succès');
+      Toast.fire({
+        icon: 'success',
+        title: 'Wallet supprimé avec succès'
+      });
       fetchWallets(userId);
       setWalletToDelete(null);
     } catch (err: any) {
-      alert(err.message);
+      swalDark.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: err.message
+      });
     }
   };
 
@@ -237,7 +351,11 @@ const Dashboard: React.FC = () => {
               paymentUnit: walletToDelete.currency
           };
       } else {
-          alert("Transfert direct impossible. Devises incompatibles.");
+          swalDark.fire({
+            icon: 'warning',
+            title: 'Action Impossible',
+            text: "Transfert direct impossible. Devises incompatibles."
+          });
           return;
       }
 
@@ -249,19 +367,27 @@ const Dashboard: React.FC = () => {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.message || 'Erreur lors du transfert');
+        throw new Error(data.message || data.error || 'Erreur lors du transfert');
       }
 
       await performDelete(walletToDelete.id);
 
     } catch (err: any) {
-      alert(err.message);
+      swalDark.fire({
+        icon: 'error',
+        title: 'Erreur Transfert',
+        text: err.message
+      });
     }
   };
 
   const deleteWallet = async (walletId: number) => {
     if (wallets.length <= 1) {
-      alert("Impossible de supprimer votre dernier wallet !");
+      swalDark.fire({
+        icon: 'warning',
+        title: 'Attention',
+        text: "Impossible de supprimer votre dernier wallet !"
+      });
       return;
     }
 
@@ -274,14 +400,28 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    if (!window.confirm('Confirmer suppression wallet ?')) return;
-    performDelete(walletId);
+    const result = await swalDark.fire({
+      title: 'Confirmer la suppression ?',
+      text: "Cette action est irréversible.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Oui, supprimer',
+      cancelButtonText: 'Annuler'
+    });
+
+    if (result.isConfirmed) {
+      performDelete(walletId);
+    }
   };
 
-  const totalValue = wallets.reduce((sum, wallet) => {
+  const totalValueEur = wallets.reduce((sum, wallet) => {
     const price = prices[wallet.currency] || 0;
     return sum + wallet.balance * price;
   }, 0);
+
+  const totalValue = preferredCurrency === 'EUR' 
+    ? totalValueEur 
+    : totalValueEur / (prices['USD'] || 0.92);
 
   const handleTransaction = async () => {
     const userId = localStorage.getItem('userId');
@@ -306,13 +446,13 @@ const Dashboard: React.FC = () => {
               userId: parseInt(userId),
               cryptoUnit: transactionForm.crypto,
               amount: parseFloat(transactionForm.amount),
-              paymentUnit: 'EUR'
+              paymentUnit: transactionForm.currency // Utilisation dynamique de la devise
             }
           : {
               userId: parseInt(userId),
               cryptoUnit: transactionForm.crypto,
               amount: parseFloat(transactionForm.amount),
-              targetUnit: 'EUR'
+              targetUnit: transactionForm.currency // Utilisation dynamique de la devise cible
             };
       }
 
@@ -325,26 +465,48 @@ const Dashboard: React.FC = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Erreur lors de la transaction');
+        // Backend returns ErrorResponse { error: string } on error
+        throw new Error(data.message || data.error || 'Erreur lors de la transaction');
       }
 
-      alert(`Transaction réussie : ${data.message || 'Opération en cours'}`);
+      swalDark.fire({
+        icon: 'success',
+        title: 'Transaction Initiée',
+        text: data.message || 'Votre demande a été envoyée au réseau.',
+        timer: 3000
+      });
       
-      setTimeout(() => {
+      // Refresh Strategy: Immediate + Polling for eventual consistency
+      const refreshData = () => {
         fetchWallets(userId);
         fetchHistory(userId);
-      }, 1000);
+      };
+
+      refreshData(); // Immediate
+      
+      // Polling every 500ms for 2.5 seconds to catch async updates
+      let attempts = 0;
+      const interval = setInterval(() => {
+          refreshData();
+          attempts++;
+          if (attempts >= 5) clearInterval(interval);
+      }, 500);
 
       setTransactionForm({ 
         crypto: '', 
         currency: 'EUR', 
         amount: '', 
-        recipientId: '',
+        recipientId: '', 
         type: 'BUY'
       });
+      setFiatAmount('');
 
     } catch (err: any) {
-      alert(`Erreur: ${err.message}`);
+      swalDark.fire({
+        icon: 'error',
+        title: 'Échec Transaction',
+        text: err.message
+      });
     }
   };
 
@@ -392,9 +554,17 @@ const Dashboard: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-3xl blur-3xl group-hover:blur-[100px] transition-all duration-1000"></div>
           <div className="relative bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-sm flex flex-col md:flex-row justify-between items-center">
             <div>
-              <p className="text-cyan-400 font-mono text-sm uppercase tracking-widest mb-1">Portefeuille Global</p>
+              <div className="flex items-center gap-3 mb-1">
+                <p className="text-cyan-400 font-mono text-sm uppercase tracking-widest">Portefeuille Global</p>
+                <button 
+                  onClick={() => setPreferredCurrency(c => c === 'EUR' ? 'USD' : 'EUR')}
+                  className="px-2 py-0.5 rounded border border-cyan-500/30 text-[10px] font-bold text-cyan-500 hover:bg-cyan-500/10 transition"
+                >
+                  {preferredCurrency} ⇄
+                </button>
+              </div>
               <h2 className="text-6xl font-black text-white tracking-tighter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
-                {totalValue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                {totalValue.toLocaleString(preferredCurrency === 'EUR' ? 'fr-FR' : 'en-US', { style: 'currency', currency: preferredCurrency })}
               </h2>
             </div>
             <div className="mt-6 md:mt-0 flex gap-2">
@@ -425,6 +595,11 @@ const Dashboard: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {wallets.map((wallet) => {
                   const isCrypto = ['BTC', 'ETH'].includes(wallet.currency);
+                  const priceInEur = prices[wallet.currency] || 1;
+                  const value = preferredCurrency === 'EUR' 
+                    ? wallet.balance * priceInEur
+                    : (wallet.balance * priceInEur) / (prices['USD'] || 0.92);
+
                   return (
                     <div key={wallet.id} className="group relative bg-[#0f172a] rounded-2xl p-6 border border-slate-800 hover:border-cyan-500/30 transition-all overflow-hidden">
                       <div className={`absolute top-0 right-0 p-8 rounded-bl-[100px] opacity-10 transition-opacity group-hover:opacity-20 ${isCrypto ? 'bg-cyan-500' : 'bg-purple-500'}`}></div>
@@ -438,7 +613,7 @@ const Dashboard: React.FC = () => {
                         <div className="space-y-1">
                           <p className="text-3xl font-mono text-white tracking-tight">{wallet.balance}</p>
                           <p className="text-xs text-slate-500 font-mono">
-                             ≈ {(wallet.balance * (prices[wallet.currency] || 1)).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                             ≈ {value.toLocaleString(preferredCurrency === 'EUR' ? 'fr-FR' : 'en-US', { style: 'currency', currency: preferredCurrency })}
                           </p>
                         </div>
                       </div>
@@ -516,6 +691,8 @@ const Dashboard: React.FC = () => {
               </div>
 
               <div className="space-y-4">
+                
+                {/* Asset Selection */}
                 <div>
                   <label className="text-xs font-mono text-cyan-500 mb-1 block">ASSET_TYPE</label>
                   <select
@@ -529,16 +706,66 @@ const Dashboard: React.FC = () => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="text-xs font-mono text-cyan-500 mb-1 block">QUANTITY</label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={transactionForm.amount}
-                    onChange={(e) => setTransactionForm({ ...transactionForm, amount: e.target.value })}
-                    placeholder="0.00"
-                    className="w-full bg-[#050b14] border border-slate-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none font-mono"
-                  />
+                {/* Currency Selection (Only for BUY/SELL) */}
+                {transactionForm.type !== 'TRANSFER' && (
+                  <div>
+                    <label className="text-xs font-mono text-cyan-500 mb-1 block">PAYMENT_CURRENCY</label>
+                    <div className="flex bg-[#050b14] border border-slate-700 rounded-lg p-1">
+                      {['EUR', 'USD'].map((curr) => (
+                        <button
+                          key={curr}
+                          onClick={() => setTransactionForm({ ...transactionForm, currency: curr })}
+                          className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+                            transactionForm.currency === curr
+                              ? 'bg-slate-700 text-white shadow-sm'
+                              : 'text-slate-500 hover:text-slate-300'
+                          }`}
+                        >
+                          {curr}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Amount Inputs */}
+                <div className="space-y-3">
+                   {/* Crypto Amount */}
+                   <div>
+                      <label className="text-xs font-mono text-cyan-500 mb-1 block flex justify-between">
+                        <span>QUANTITY ({transactionForm.crypto || 'CRYPTO'})</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={transactionForm.amount}
+                        onChange={(e) => handleCryptoChange(e.target.value)}
+                        placeholder="0.00"
+                        disabled={!transactionForm.crypto}
+                        className="w-full bg-[#050b14] border border-slate-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none font-mono disabled:opacity-50"
+                      />
+                   </div>
+
+                   {/* Fiat Amount (Only for BUY/SELL) */}
+                   {transactionForm.type !== 'TRANSFER' && (
+                     <div className="relative">
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="text-slate-700 text-xs font-mono">≈</span>
+                        </div>
+                        <label className="text-xs font-mono text-cyan-500 mb-1 block">
+                          AMOUNT ({transactionForm.currency})
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={fiatAmount}
+                          onChange={(e) => handleFiatChange(e.target.value)}
+                          placeholder="0.00"
+                          disabled={!transactionForm.crypto}
+                          className="w-full bg-[#050b14] border border-slate-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none font-mono disabled:opacity-50"
+                        />
+                     </div>
+                   )}
                 </div>
 
                 {transactionForm.type === 'TRANSFER' && (
@@ -589,12 +816,12 @@ const Dashboard: React.FC = () => {
                       <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-500 font-bold">₿</div>
                       <div>
                         <div className="text-white font-bold text-sm">Bitcoin</div>
-                        <div className="text-slate-500 text-xs">BTC/EUR</div>
+                        <div className="text-slate-500 text-xs">BTC/{preferredCurrency}</div>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="text-white font-mono font-bold">
-                        {marketData.bitcoin.eur.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                        {marketData.bitcoin[preferredCurrency.toLowerCase() as 'eur' | 'usd'].toLocaleString(preferredCurrency === 'EUR' ? 'fr-FR' : 'en-US', { style: 'currency', currency: preferredCurrency })}
                       </div>
                       <div className={`text-xs font-mono ${marketData.bitcoin.eur_24h_change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {marketData.bitcoin.eur_24h_change >= 0 ? '+' : ''}{marketData.bitcoin.eur_24h_change.toFixed(2)}%
@@ -608,12 +835,12 @@ const Dashboard: React.FC = () => {
                       <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold">Ξ</div>
                       <div>
                         <div className="text-white font-bold text-sm">Ethereum</div>
-                        <div className="text-slate-500 text-xs">ETH/EUR</div>
+                        <div className="text-slate-500 text-xs">ETH/{preferredCurrency}</div>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="text-white font-mono font-bold">
-                        {marketData.ethereum.eur.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                        {marketData.ethereum[preferredCurrency.toLowerCase() as 'eur' | 'usd'].toLocaleString(preferredCurrency === 'EUR' ? 'fr-FR' : 'en-US', { style: 'currency', currency: preferredCurrency })}
                       </div>
                       <div className={`text-xs font-mono ${marketData.ethereum.eur_24h_change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                          {marketData.ethereum.eur_24h_change >= 0 ? '+' : ''}{marketData.ethereum.eur_24h_change.toFixed(2)}%

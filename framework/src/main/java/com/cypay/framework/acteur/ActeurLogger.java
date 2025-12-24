@@ -56,15 +56,15 @@ public class ActeurLogger {
     }
 
     public void messageRecu(String emetteur, String typeMessage) {
-        log("MSG_IN", String.format("Reçu de [%s] → %s", emetteur, typeMessage));
+        log("MSG_IN", String.format("From [%s] -> %s", emetteur, typeMessage));
     }
 
     public void messageEnvoye(String destinataire, String typeMessage) {
-        log("MSG_OUT", String.format("Envoyé vers [%s] → %s", destinataire, typeMessage));
+        log("MSG_OUT", String.format("To [%s] -> %s", destinataire, typeMessage));
     }
 
     public void httpRequest(String method, String url, int statusCode) {
-        log("HTTP", String.format("%s %s → %d", method, url, statusCode));
+        log("HTTP", String.format("%s %s -> %d", method, url, statusCode));
     }
 
     public void erreur(String message, Exception e) {

@@ -1,5 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
+
+const swalDark = Swal.mixin({
+  background: '#0f172a',
+  color: '#e2e8f0',
+  confirmButtonColor: '#06b6d4',
+  cancelButtonColor: '#ef4444',
+  buttonsStyling: true,
+  customClass: {
+    popup: 'border border-slate-700 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)]',
+    title: 'font-bold text-xl',
+    htmlContainer: 'text-slate-400'
+  }
+});
 
 const Login: React.FC = () => {
   const [isRegistering, setIsRegistering] = useState(false);
@@ -47,7 +61,12 @@ const Login: React.FC = () => {
       if (isRegistering) {
         setIsRegistering(false);
         setError('');
-        alert('Compte créé avec succès ! Connectez-vous.');
+        swalDark.fire({
+          icon: 'success',
+          title: 'Inscription Réussie',
+          text: 'Compte créé avec succès ! Connectez-vous.',
+          timer: 3000
+        });
       } else {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userId', data.userId);

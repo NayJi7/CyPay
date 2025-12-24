@@ -35,27 +35,20 @@ public class MicroserviceManagerActeur extends Acteur<Object> {
             int port = req.port();
             String path = req.path();
             String name = req.name();
-
-            log("Démarrage du microservice " + name + " sur le port " + port);
-
+            logger.info("[START] Démarrage du microservice " + name + " sur le port " + port);
             ProcessBuilder builder = new ProcessBuilder(
                     "java",
                     "-jar",
                     path,
                     "--server.port=" + port
             );
-
             builder.redirectErrorStream(true);
-
             Process process = builder.start();
-
             processes.put(port, process);
             services.put(port, name);
-
-            log("Microservice démarré : " + name + " (port " + port + ")");
-
+            logger.info("[SUCCESS] Microservice démarré : " + name + " (port " + port + ")");
         } catch (IOException e) {
-            logErreur("Erreur lors du démarrage du microservice", e);
+            logger.erreur("[ERROR] Erreur lors du démarrage du microservice", e);
         }
     }
 
@@ -63,29 +56,25 @@ public class MicroserviceManagerActeur extends Acteur<Object> {
     // ========== ARRET DU MICROSERVICE ==========
     private void arreterMicroservice(int port) {
         Process p = processes.get(port);
-
         if (p == null) {
-            log("Aucun microservice sur le port " + port);
+            logger.info("[WARN] Aucun microservice sur le port " + port);
             return;
         }
-
-        log("Arrêt du microservice " + services.get(port) + " sur le port " + port);
-
+        logger.info("[STOP] Arrêt du microservice " + services.get(port) + " sur le port " + port);
         p.destroy();
         processes.remove(port);
         services.remove(port);
-
-        log("Microservice arrêté");
+        logger.info("[SUCCESS] Microservice arrêté");
     }
 
 
     // ========== LISTE ==========
     private void afficherMicroservices() {
-        log("=== Microservices actifs ===");
+        logger.info("[LIST] === Microservices actifs ===");
         services.forEach((p, name) ->
-                log("Port : " + p + " | Nom : " + name)
+            logger.info("[LIST] Port : " + p + " | Nom : " + name)
         );
-        if (services.isEmpty()) log("Aucun microservice actif.");
+        if (services.isEmpty()) logger.info("[LIST] Aucun microservice actif.");
     }
 
 

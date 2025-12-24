@@ -1,6 +1,7 @@
 package com.example.transactions.agent;
-
-import com.cypay.framework.acteur.ActeurLogger;
+// Fichier supprimé : OrderAgent.java (fonctionnalité non utilisée)
+import com.cypay.framework.acteur.Acteur;
+import com.cypay.framework.acteur.Message;
 import com.example.transactions.message.OrderMessage;
 import com.example.transactions.message.CreateBlockchainMessage;
 import com.example.transactions.model.TransactionType;
@@ -9,70 +10,37 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-
 @Component
-public class OrderAgent implements Runnable {
+public class OrderAgent extends Acteur<OrderMessage> {
 
     @Autowired
     private CreateBlockchainAgent createBlockchainAgent;
 
-    @Value("${spring.datasource.url}")
-    private String jdbcUrl;
-    @Value("${spring.datasource.username}")
-    private String dbUser;
-    @Value("${spring.datasource.password}")
-    private String dbPassword;
-
-    private ActeurLogger logger;
-    private final BlockingQueue<OrderMessage> mailbox = new LinkedBlockingQueue<>();
-    private Thread thread;
+    @Autowired
+    public OrderAgent(
+            @Value("${spring.datasource.url}") String jdbcUrl,
+            @Value("${spring.datasource.username}") String dbUser,
+            @Value("${spring.datasource.password}") String dbPassword) {
+        super("OrderAgent", true, jdbcUrl, dbUser, dbPassword);
+    }
 
     @PostConstruct
     public void init() {
-        this.logger = new ActeurLogger("OrderAgent", true, jdbcUrl, dbUser, dbPassword);
-        thread = new Thread(this, "OrderAgent");
-        thread.start();
+        demarrer();
+        logger.info("[INIT] OrderAgent démarré");
     }
 
     public void send(OrderMessage message) {
-        try {
-            mailbox.put(message);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            if (logger != null) logger.erreur("Erreur lors de l'envoi du message", e);
-        }
+        logger.info("[SEND] Reçu une demande d'ordre de " + message.getUserId() + " (origine: SupervisorAgent)");
+        envoyer(new Message<>("SupervisorAgent", message));
     }
 
     @Override
-    public void run() {
-        logger.info("OrderAgent démarré");
-
-        while (!Thread.currentThread().isInterrupted()) {
-            try {
-                OrderMessage message = mailbox.take();
-                processMessage(message);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                logger.erreur("OrderAgent interrompu", e);
-            }
-        }
-    }
-
-    private void processMessage(OrderMessage message) {
-        logger.info("Ordre programmé: " + message);
-
+    protected void traiterMessage(OrderMessage message) {
+        logger.info("[PROCESS] Traitement d'un ordre utilisateur: " + message);
         try {
-            // TODO: Implémenter la logique d'ordre programmé
-            // 1. Vérifier le prix actuel de la crypto (API externe ou service de prix)
-            // 2. Comparer avec le prix cible (message.getTargetPrice())
-            // 3. Si le prix cible est atteint:
-            //    - Déclencher l'achat ou la vente selon message.getOrderType()
-            //    - Appeler BuyAgent ou SellAgent
-            // 4. Sinon, programmer un rappel périodique pour vérifier le prix
-
-            // Pour l'instant, on enregistre juste l'ordre dans la blockchain
+            // TODO: Logique complète à implémenter (prix, déclenchement, etc.)
+            logger.info("[CHECK] Enregistrement de l'ordre dans la blockchain (appel CreateBlockchainAgent)");
             CreateBlockchainMessage blockchainMessage = new CreateBlockchainMessage(
                     TransactionType.ORDER,
                     message.getUserId(),
@@ -80,13 +48,10 @@ public class OrderAgent implements Runnable {
                     message.getAmount(),
                     message.getCryptoUnit()
             );
-
             createBlockchainAgent.send(blockchainMessage);
-
-            logger.info("Ordre programmé enregistré avec succès (prix cible: " + message.getTargetPrice() + ")");
-
+            logger.info("[SUCCESS] Ordre programmé et enregistré (prix cible: " + message.getTargetPrice() + ")");
         } catch (Exception e) {
-            logger.erreur("Erreur lors du traitement de l'ordre", e);
+            logger.erreur("[ERROR] Erreur lors du traitement de l'ordre", e);
         }
     }
 }
