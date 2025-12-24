@@ -11,24 +11,25 @@ import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
 
-@Component
+
 public class TransferAgent extends Acteur<TransferMessage> {
 
-    @Autowired
-    private CreateBlockchainAgent createBlockchainAgent;
 
-    @Value("${wallet.service.url}")
+    private CreateBlockchainAgent createBlockchainAgent;
     private String walletServiceUrl;
 
-    @Autowired
-    public TransferAgent(
-            @Value("${spring.datasource.url}") String jdbcUrl,
-            @Value("${spring.datasource.username}") String dbUser,
-            @Value("${spring.datasource.password}") String dbPassword) {
+
+    public TransferAgent(String jdbcUrl, String dbUser, String dbPassword) {
         super("TransferAgent", true, jdbcUrl, dbUser, dbPassword);
     }
 
-    @PostConstruct
+    public void setCreateBlockchainAgent(CreateBlockchainAgent agent) {
+        this.createBlockchainAgent = agent;
+    }
+    public void setWalletServiceUrl(String url) {
+        this.walletServiceUrl = url;
+    }
+
     public void init() {
         demarrer();
         logger.info("[INIT] TransferAgent démarré avec Wallet URL: " + walletServiceUrl);

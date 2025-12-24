@@ -11,21 +11,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-@Component
+
 public class CreateBlockchainAgent extends Acteur<CreateBlockchainMessage> {
 
-    @Autowired
+
     private DatabaseService databaseService;
 
-    @Autowired
-    public CreateBlockchainAgent(
-            @Value("${spring.datasource.url}") String jdbcUrl,
-            @Value("${spring.datasource.username}") String dbUser,
-            @Value("${spring.datasource.password}") String dbPassword) {
+
+    public CreateBlockchainAgent(String jdbcUrl, String dbUser, String dbPassword) {
         super("CreateBlockchainAgent", true, jdbcUrl, dbUser, dbPassword);
     }
 
-    @PostConstruct
+    public void setDatabaseService(DatabaseService service) {
+        this.databaseService = service;
+    }
+
     public void init() {
         demarrer();
         logger.info("[INIT] CreateBlockchainAgent démarré");

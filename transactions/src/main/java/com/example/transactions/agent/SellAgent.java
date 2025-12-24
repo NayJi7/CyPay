@@ -13,27 +13,29 @@ import jakarta.annotation.PostConstruct;
 
 import com.example.transactions.service.CryptoPriceService;
 
-@Component
+
 public class SellAgent extends Acteur<SellMessage> {
 
-    @Autowired
+
     private CreateBlockchainAgent createBlockchainAgent;
-
-    @Autowired
     private CryptoPriceService cryptoPriceService;
-
-    @Value("${wallet.service.url}")
     private String walletServiceUrl;
 
-    @Autowired
-    public SellAgent(
-            @Value("${spring.datasource.url}") String jdbcUrl,
-            @Value("${spring.datasource.username}") String dbUser,
-            @Value("${spring.datasource.password}") String dbPassword) {
+
+    public SellAgent(String jdbcUrl, String dbUser, String dbPassword) {
         super("SellAgent", true, jdbcUrl, dbUser, dbPassword);
     }
 
-    @PostConstruct
+    public void setCreateBlockchainAgent(CreateBlockchainAgent agent) {
+        this.createBlockchainAgent = agent;
+    }
+    public void setCryptoPriceService(CryptoPriceService service) {
+        this.cryptoPriceService = service;
+    }
+    public void setWalletServiceUrl(String url) {
+        this.walletServiceUrl = url;
+    }
+
     public void init() {
         demarrer();
         logger.info("[INIT] SellAgent démarré avec Wallet URL: " + walletServiceUrl);
