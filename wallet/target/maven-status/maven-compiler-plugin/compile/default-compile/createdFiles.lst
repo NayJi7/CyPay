@@ -8,6 +8,6 @@ com/example/wallet/acteur/WalletHttpActeur.class
 com/example/wallet/repository/WalletRepository.class
 com/example/wallet/acteur/WalletHttpActeur$TransferRequest.class
 com/example/wallet/web/dto/CreateWalletRequest.class
-com/example/wallet/acteur/WalletHttpActeur$MessageResponse.class
 com/example/wallet/entity/Wallet.class
+com/example/wallet/acteur/WalletHttpActeur$MessageResponse.class
 com/example/wallet/exception/UserNotFoundException.class

@@ -16,7 +16,7 @@ public class SellAgentPool {
     private DynamicActorPool<SellMessage> pool;
 
     @Autowired
-    private CreateBlockchainAgent createBlockchainAgent;
+    private CreateBlockchainAgentPool createBlockchainAgentPool;
     @Autowired
     private com.example.transactions.service.CryptoPriceService cryptoPriceService;
     @Value("${wallet.service.url}")
@@ -37,7 +37,7 @@ public class SellAgentPool {
                 2, // lowWatermark
                 () -> {
                     SellAgent agent = new SellAgent(jdbcUrl, dbUser, dbPassword);
-                    agent.setCreateBlockchainAgent(createBlockchainAgent);
+                    agent.setCreateBlockchainAgentPool(createBlockchainAgentPool);
                     agent.setCryptoPriceService(cryptoPriceService);
                     agent.setWalletServiceUrl(walletServiceUrl);
                     return agent;

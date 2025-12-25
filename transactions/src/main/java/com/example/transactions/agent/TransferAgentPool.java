@@ -16,7 +16,7 @@ public class TransferAgentPool {
     private DynamicActorPool<TransferMessage> pool;
 
     @Autowired
-    private CreateBlockchainAgent createBlockchainAgent;
+    private CreateBlockchainAgentPool createBlockchainAgentPool;
     @Value("${wallet.service.url}")
     private String walletServiceUrl;
     @Value("${spring.datasource.url}")
@@ -35,7 +35,7 @@ public class TransferAgentPool {
                 2, // lowWatermark
                 () -> {
                     TransferAgent agent = new TransferAgent(jdbcUrl, dbUser, dbPassword);
-                    agent.setCreateBlockchainAgent(createBlockchainAgent);
+                    agent.setCreateBlockchainAgentPool(createBlockchainAgentPool);
                     agent.setWalletServiceUrl(walletServiceUrl);
                     return agent;
                 }

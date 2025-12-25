@@ -145,10 +145,14 @@ public class WalletHttpActeur extends Acteur<Object> {
 
     private void handleDebit(HttpExchange exchange, Long userId, String body) {
         try {
+            log("📥 Debit request body: " + body);
             OperationRequest request = gson.fromJson(body, OperationRequest.class);
+            log("💰 Debit: userId=" + userId + ", currency=" + request.getCurrency() + ", amount=" + request.getAmount());
             Wallet wallet = walletService.debit(userId, request.getCurrency(), request.getAmount());
+            log("✅ Debit successful: " + wallet);
             sendJson(exchange, 200, wallet);
         } catch (Exception e) {
+            logErreur("❌ Erreur lors du débit", e);
             sendError(exchange, 500, e.getMessage());
         }
     }

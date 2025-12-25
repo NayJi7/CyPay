@@ -12,10 +12,12 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 
 
+import java.util.Locale;
+
 public class TransferAgent extends Acteur<TransferMessage> {
 
 
-    private CreateBlockchainAgent createBlockchainAgent;
+    private CreateBlockchainAgentPool createBlockchainAgentPool;
     private String walletServiceUrl;
 
 
@@ -23,8 +25,8 @@ public class TransferAgent extends Acteur<TransferMessage> {
         super("TransferAgent", true, jdbcUrl, dbUser, dbPassword);
     }
 
-    public void setCreateBlockchainAgent(CreateBlockchainAgent agent) {
-        this.createBlockchainAgent = agent;
+    public void setCreateBlockchainAgentPool(CreateBlockchainAgentPool pool) {
+        this.createBlockchainAgentPool = pool;
     }
     public void setWalletServiceUrl(String url) {
         this.walletServiceUrl = url;
@@ -52,7 +54,7 @@ public class TransferAgent extends Acteur<TransferMessage> {
                 return;
             }
             String transferUrl = walletServiceUrl + "/api/wallets/transfer";
-            String transferBody = String.format(
+            String transferBody = String.format(Locale.US,
                     "{\"fromUserId\":%d,\"toUserId\":%d,\"currency\":\"%s\",\"amount\":%.8f}",
                     message.getFromUserId(),
                     message.getToUserId(),
@@ -73,7 +75,7 @@ public class TransferAgent extends Acteur<TransferMessage> {
                     message.getAmount(),
                     message.getCryptoUnit()
             );
-            createBlockchainAgent.send(blockchainMessage);
+            createBlockchainAgentPool.send(blockchainMessage);
             logger.info("[SUCCESS] Transaction blockchain enregistrée");
         } catch (Exception e) {
             logger.erreur("[ERROR] Erreur lors du transfert", e);

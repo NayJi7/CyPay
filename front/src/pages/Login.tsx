@@ -55,7 +55,7 @@ const Login: React.FC = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Une erreur est survenue');
+        throw new Error(data.message || data.error || 'Une erreur est survenue');
       }
 
       if (isRegistering) {

@@ -26,6 +26,13 @@ class DynamicActorPoolTest {
 
     static class DummyActeur extends Acteur<String> {
         DummyActeur() { super("Dummy", false, null, null, null); }
-        @Override protected void traiterMessage(String message) {}
+        @Override protected void traiterMessage(String message) {
+            try {
+                // Simuler un traitement lent pour que la mailbox s'accumule
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 }

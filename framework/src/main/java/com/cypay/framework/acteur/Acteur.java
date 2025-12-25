@@ -202,6 +202,10 @@ public abstract class Acteur<T> implements Runnable {
         return nom;
     }
 
+    public int getMailboxSize() {
+        return mailbox.size();
+    }
+
     protected ActeurLogger getLogger() {
         return logger;
     }

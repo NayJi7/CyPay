@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 public class OrderAgent extends Acteur<OrderMessage> {
 
     @Autowired
-    private CreateBlockchainAgent createBlockchainAgent;
+    private CreateBlockchainAgentPool createBlockchainAgentPool;
 
     @Autowired
     public OrderAgent(
@@ -48,7 +48,7 @@ public class OrderAgent extends Acteur<OrderMessage> {
                     message.getAmount(),
                     message.getCryptoUnit()
             );
-            createBlockchainAgent.send(blockchainMessage);
+            createBlockchainAgentPool.send(blockchainMessage);
             logger.info("[SUCCESS] Ordre programmé et enregistré (prix cible: " + message.getTargetPrice() + ")");
         } catch (Exception e) {
             logger.erreur("[ERROR] Erreur lors du traitement de l'ordre", e);

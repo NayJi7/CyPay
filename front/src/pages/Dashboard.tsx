@@ -64,11 +64,12 @@ const Dashboard: React.FC = () => {
   
   // NOUVEAU : État pour les données CoinGecko
   const [marketData, setMarketData] = useState<MarketData | null>(null);
+  const [pricesLoaded, setPricesLoaded] = useState(false);
 
   // Mock prices (interne pour le calcul du total si l'API échoue ou pour les autres devises)
   const [prices, setPrices] = useState<Record<string, number>>({
-    BTC: 45000,
-    ETH: 3000,
+    BTC: 0,
+    ETH: 0,
     EUR: 1,
     USD: 0.92,
   });
@@ -88,6 +89,7 @@ const Dashboard: React.FC = () => {
   const [preferredCurrency, setPreferredCurrency] = useState<'EUR' | 'USD'>('EUR');
 
   const [userProfile, setUserProfile] = useState({
+    id: '',
     name: '',
     email: '',
     avatar: ''
@@ -168,6 +170,7 @@ const Dashboard: React.FC = () => {
     }
 
     setUserProfile({
+      id: userId || '',
       name: userPseudo || 'Utilisateur',
       email: userEmail || '',
       avatar: `https://ui-avatars.com/api/?name=${userPseudo || 'User'}&background=0ea5e9&color=fff&size=128&bold=true`
@@ -198,12 +201,14 @@ const Dashboard: React.FC = () => {
         const data = await response.json();
         setMarketData(data);
         
-        // On met à jour nos prix internes pour que le calcul du "Total Portfolio" soit précis
-        setPrices(prev => ({
-          ...prev,
-          BTC: data.bitcoin.eur,
-          ETH: data.ethereum.eur
-        }));
+        if (data.bitcoin && data.ethereum) {
+            setPrices(prev => ({
+            ...prev,
+            BTC: data.bitcoin.eur,
+            ETH: data.ethereum.eur
+            }));
+            setPricesLoaded(true);
+        }
       }
     } catch (e) {
       console.error("Erreur CoinGecko (Mode offline activé)", e);
@@ -215,23 +220,30 @@ const Dashboard: React.FC = () => {
       const response = await fetch('/transactions/prices');
       if (response.ok) {
         const data = await response.json();
-        // Fallback si CoinGecko échoue
-        if (!marketData) {
-            const newPrices: Record<string, number> = { ...data };
+        
+        // On met à jour les prix si on n'a pas encore de données CoinGecko OU si les prix actuels sont à 0
+        setPrices(prev => {
+            // Si on a déjà des prix valides via CoinGecko, on ne touche pas
+            if (prev.BTC > 0 && prev.ETH > 0 && marketData) return prev;
+
+            const newPrices: Record<string, number> = { ...prev, ...data };
             if (data.BTC_EUR) newPrices.BTC = data.BTC_EUR;
             if (data.ETH_EUR) newPrices.ETH = data.ETH_EUR;
             newPrices.EUR = 1;
-            setPrices(newPrices);
-        }
+            return newPrices;
+        });
+        setPricesLoaded(true);
       }
     } catch (e) {
       console.error(e);
+      // Si erreur, on considère quand même chargé pour ne pas bloquer l'UI indéfiniment
+      setPricesLoaded(true);
     }
   };
 
   const fetchWallets = async (userId: string) => {
     try {
-      const response = await fetch(`/api/wallets/${userId}`);
+      const response = await fetch(`/api/wallets/${userId}?t=${Date.now()}`);
       if (!response.ok) throw new Error('Erreur chargement wallets');
       const data = await response.json();
       setWallets(data);
@@ -423,6 +435,11 @@ const Dashboard: React.FC = () => {
     ? totalValueEur 
     : totalValueEur / (prices['USD'] || 0.92);
 
+  const isPortfolioReady = !loading && pricesLoaded && wallets.every(w => {
+    if (w.currency === 'EUR') return true;
+    return (prices[w.currency] || 0) > 0;
+  });
+
   const handleTransaction = async () => {
     const userId = localStorage.getItem('userId');
     if (!userId) return;
@@ -484,12 +501,12 @@ const Dashboard: React.FC = () => {
 
       refreshData(); // Immediate
       
-      // Polling every 500ms for 2.5 seconds to catch async updates
+      // Polling every 500ms for 5 seconds to catch async updates
       let attempts = 0;
       const interval = setInterval(() => {
           refreshData();
           attempts++;
-          if (attempts >= 5) clearInterval(interval);
+          if (attempts >= 10) clearInterval(interval);
       }, 500);
 
       setTransactionForm({ 
@@ -527,11 +544,14 @@ const Dashboard: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-6">
-            <div className="hidden md:flex items-center space-x-4 bg-white/5 px-4 py-2 rounded-full border border-white/5">
-              <img src={userProfile.avatar} alt="User" className="w-8 h-8 rounded-full border border-cyan-500/50" />
-              <div className="text-sm">
-                <p className="text-white font-medium leading-none">{userProfile.name}</p>
-                <p className="text-xs text-slate-500 font-mono">{userProfile.email}</p>
+            <div className="hidden md:flex items-center gap-3 pl-2 pr-5 py-1.5 bg-slate-800/40 rounded-full border border-white/5 hover:border-white/10 transition-all group">
+              <img src={userProfile.avatar} alt="User" className="w-9 h-9 rounded-full ring-2 ring-cyan-500/20 group-hover:ring-cyan-500/40 transition-all" />
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors">{userProfile.name}</span>
+                  <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">#{userProfile.id}</span>
+                </div>
+                <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors">{userProfile.email}</span>
               </div>
             </div>
             <button 
@@ -564,7 +584,10 @@ const Dashboard: React.FC = () => {
                 </button>
               </div>
               <h2 className="text-6xl font-black text-white tracking-tighter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
-                {totalValue.toLocaleString(preferredCurrency === 'EUR' ? 'fr-FR' : 'en-US', { style: 'currency', currency: preferredCurrency })}
+                {isPortfolioReady 
+                  ? totalValue.toLocaleString(preferredCurrency === 'EUR' ? 'fr-FR' : 'en-US', { style: 'currency', currency: preferredCurrency })
+                  : '...'
+                }
               </h2>
             </div>
             <div className="mt-6 md:mt-0 flex gap-2">

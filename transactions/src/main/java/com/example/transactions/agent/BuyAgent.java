@@ -12,12 +12,13 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 
 import com.example.transactions.service.CryptoPriceService;
+import java.util.Locale;
 
 
 public class BuyAgent extends Acteur<BuyMessage> {
 
 
-    private CreateBlockchainAgent createBlockchainAgent;
+    private CreateBlockchainAgentPool createBlockchainAgentPool;
     private CryptoPriceService cryptoPriceService;
     private String walletServiceUrl;
 
@@ -26,8 +27,8 @@ public class BuyAgent extends Acteur<BuyMessage> {
         super("BuyAgent", true, jdbcUrl, dbUser, dbPassword);
     }
 
-    public void setCreateBlockchainAgent(CreateBlockchainAgent agent) {
-        this.createBlockchainAgent = agent;
+    public void setCreateBlockchainAgentPool(CreateBlockchainAgentPool pool) {
+        this.createBlockchainAgentPool = pool;
     }
     public void setCryptoPriceService(CryptoPriceService service) {
         this.cryptoPriceService = service;
@@ -71,7 +72,7 @@ public class BuyAgent extends Acteur<BuyMessage> {
                 return;
             }
             String debitUrl = String.format("%s/api/wallets/%d/debit", walletServiceUrl, message.getUserId());
-            String debitBody = String.format("{\"currency\":\"%s\",\"amount\":%.8f}", message.getPaymentUnit().name(), montantAPayer);
+            String debitBody = String.format(Locale.US, "{\"currency\":\"%s\",\"amount\":%.8f}", message.getPaymentUnit().name(), montantAPayer);
             HttpResponse debitResponse = post(debitUrl, debitBody);
             if (debitResponse.getStatusCode() != 200) {
                 logger.erreur("[ERROR] Echec du débit pour " + message.getPaymentUnit() + ": " + debitResponse.getBody(), null);
@@ -79,7 +80,7 @@ public class BuyAgent extends Acteur<BuyMessage> {
             }
             logger.info("[SUCCESS] Débit de " + montantAPayer + " " + message.getPaymentUnit() + " effectué");
             String creditUrl = String.format("%s/api/wallets/%d/credit", walletServiceUrl, message.getUserId());
-            String creditBody = String.format("{\"currency\":\"%s\",\"amount\":%.8f}", message.getCryptoUnit().name(), message.getAmount());
+            String creditBody = String.format(Locale.US, "{\"currency\":\"%s\",\"amount\":%.8f}", message.getCryptoUnit().name(), message.getAmount());
             HttpResponse creditResponse = post(creditUrl, creditBody);
             if (creditResponse.getStatusCode() != 200) {
                 logger.erreur("[CRITICAL] Crédit crypto échoué après débit! " + creditResponse.getBody(), null);
@@ -95,7 +96,7 @@ public class BuyAgent extends Acteur<BuyMessage> {
                     message.getAmount(),
                     message.getCryptoUnit()
             );
-            createBlockchainAgent.send(blockchainMessage);
+            createBlockchainAgentPool.send(blockchainMessage);
             logger.info("[SUCCESS] Transaction d'achat terminée");
         } catch (Exception e) {
             logger.erreur("[ERROR] Erreur lors de la transaction d'achat", e);
