@@ -1,9 +1,0 @@
-/home/aterrak/gitstore/CyPay/transactions/src/test/java/com/example/transactions/TransactionApplicationTests.java
-/home/aterrak/gitstore/CyPay/transactions/src/test/java/com/example/transactions/agent/BuyAgentTest.java
-/home/aterrak/gitstore/CyPay/transactions/src/test/java/com/example/transactions/agent/CreateBlockchainAgentTest.java
-/home/aterrak/gitstore/CyPay/transactions/src/test/java/com/example/transactions/agent/SellAgentTest.java
-/home/aterrak/gitstore/CyPay/transactions/src/test/java/com/example/transactions/agent/TransferAgentTest.java
-/home/aterrak/gitstore/CyPay/transactions/src/test/java/com/example/transactions/integration/BlockchainFlowIntegrationTest.java
-/home/aterrak/gitstore/CyPay/transactions/src/test/java/com/example/transactions/integration/BuyFlowIntegrationTest.java
-/home/aterrak/gitstore/CyPay/transactions/src/test/java/com/example/transactions/integration/SellFlowIntegrationTest.java
-/home/aterrak/gitstore/CyPay/transactions/src/test/java/com/example/transactions/integration/TransferFlowIntegrationTest.java
